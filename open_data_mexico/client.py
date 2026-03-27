@@ -23,7 +23,7 @@ from typing import Any
 
 import httpx
 from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
-from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetDetail, Resource
+from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource
 from open_data_mexico._scrapers.categories import fetch_all_categories
 
 

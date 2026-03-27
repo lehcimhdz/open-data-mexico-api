@@ -1,4 +1,3 @@
-import pytest
 import httpx
 from unittest.mock import patch, AsyncMock
 
@@ -8,7 +7,7 @@ from open_data_mexico._scrapers.categories import (
     fetch_all_categories,
 )
 from open_data_mexico.models import Category
-from open_data_mexico import DatosGobMX, CategoriesResponse
+from open_data_mexico import DatosGobMX
 from server.app import app
 
 

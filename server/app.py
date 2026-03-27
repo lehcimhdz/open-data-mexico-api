@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 
-from open_data_mexico import DatosGobMX, Category, CategoriesResponse, Dataset, DatasetsResponse, DatasetDetail
+from open_data_mexico import DatosGobMX, Category, CategoriesResponse, DatasetsResponse, DatasetDetail
 
 
 @asynccontextmanager

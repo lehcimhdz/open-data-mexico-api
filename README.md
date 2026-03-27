@@ -49,7 +49,7 @@ asyncio.run(main())
 
 ## Client Reference
 
-### `DatosGobMX(timeout=30.0)`
+### `DatosGobMX(...)`
 
 Async context-manager client. A shared HTTP connection is reused across
 all method calls when used as a context manager, which is more efficient
@@ -63,11 +63,18 @@ async with DatosGobMX() as client:
 # Also valid — opens a new connection per call
 client = DatosGobMX()
 categories = await client.get_categories()
+
+# With rate limiting (0.5s between requests)
+async with DatosGobMX(request_delay=0.5) as client:
+    datasets = await client.get_category_datasets("educacion")
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `timeout` | `float` | `30.0` | HTTP request timeout in seconds |
+| `request_delay` | `float` | `0.0` | Seconds to wait between requests (rate limiting) |
+| `max_retries` | `int` | `3` | Retry attempts on 5xx/429 or network errors |
+| `cache_ttl` | `float` | `300.0` | Seconds to cache responses in memory (0 = disabled) |
 
 ### Methods
 
@@ -289,14 +296,17 @@ Example responses:
 # Clone and install all dev dependencies
 pip install -e ".[dev]"
 
-# Run the full test suite
+# Run the full test suite (with coverage)
 pytest
 
-# Verbose output
-pytest -v
+# Without coverage (faster)
+pytest --no-cov -v
 
-# Single file
-pytest tests/test_datasets.py -v
+# Lint
+ruff check .
+
+# Type check
+mypy open_data_mexico/
 ```
 
 ### Project layout
@@ -317,7 +327,7 @@ tests/
 ├── conftest.py            # shared mock HTML fixtures
 ├── test_categories.py     # 10 tests
 ├── test_datasets.py       # 8 tests
-└── test_dataset_detail.py # 11 tests
+└── test_dataset_detail.py # 26 tests
 ```
 
 ---

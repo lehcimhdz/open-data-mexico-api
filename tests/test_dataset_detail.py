@@ -1,4 +1,3 @@
-import pytest
 import httpx
 from unittest.mock import AsyncMock, patch
 from pytest_httpx import HTTPXMock
