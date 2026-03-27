@@ -2,13 +2,14 @@ import pytest
 import httpx
 from unittest.mock import patch, AsyncMock
 
-from app.scrapers.categories import (
+from open_data_mexico._scrapers.categories import (
     _parse_categories_page,
     _get_total_pages,
     fetch_all_categories,
 )
-from app.models.schemas import Category
-from app.main import app
+from open_data_mexico.models import Category
+from open_data_mexico import DatosGobMX, CategoriesResponse
+from server.app import app
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +66,8 @@ async def test_fetch_all_categories_combines_pages(
         text=categories_page_2_html,
     )
 
-    categories = await fetch_all_categories()
+    async with httpx.AsyncClient() as client:
+        categories = await fetch_all_categories(client)
     assert len(categories) == 3
     slugs = [c.slug for c in categories]
     assert "agricultura" in slugs
@@ -99,13 +101,14 @@ MOCK_CATEGORIES = [
 
 async def test_api_categories_endpoint():
     with patch(
-        "app.main.fetch_all_categories",
+        "open_data_mexico._scrapers.categories.fetch_all_categories",
         new=AsyncMock(return_value=MOCK_CATEGORIES),
     ):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://test"
-        ) as client:
-            response = await client.get("/categories")
+        with patch.object(DatosGobMX, "get_categories", new=AsyncMock(return_value=MOCK_CATEGORIES)):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get("/categories")
 
     assert response.status_code == 200
     data = response.json()
@@ -115,10 +118,7 @@ async def test_api_categories_endpoint():
 
 
 async def test_api_categories_slug_found():
-    with patch(
-        "app.main.fetch_all_categories",
-        new=AsyncMock(return_value=MOCK_CATEGORIES),
-    ):
+    with patch.object(DatosGobMX, "get_categories", new=AsyncMock(return_value=MOCK_CATEGORIES)):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -132,10 +132,7 @@ async def test_api_categories_slug_found():
 
 
 async def test_api_categories_slug_not_found():
-    with patch(
-        "app.main.fetch_all_categories",
-        new=AsyncMock(return_value=MOCK_CATEGORIES),
-    ):
+    with patch.object(DatosGobMX, "get_categories", new=AsyncMock(return_value=MOCK_CATEGORIES)):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -143,3 +140,32 @@ async def test_api_categories_slug_not_found():
 
     assert response.status_code == 404
     assert "nonexistent" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# New tests for DatosGobMX client
+# ---------------------------------------------------------------------------
+
+
+async def test_client_context_manager():
+    async with DatosGobMX() as client:
+        assert client._client is not None
+    assert client._client is None
+
+
+async def test_client_get_category_returns_none_when_not_found():
+    with patch(
+        "open_data_mexico.client.fetch_all_categories",
+        new=AsyncMock(return_value=MOCK_CATEGORIES),
+    ):
+        async with DatosGobMX() as client:
+            result = await client.get_category("nonexistent")
+    assert result is None
+
+
+def test_package_exports():
+    import open_data_mexico
+    assert hasattr(open_data_mexico, "DatosGobMX")
+    assert hasattr(open_data_mexico, "Category")
+    assert hasattr(open_data_mexico, "CategoriesResponse")
+    assert open_data_mexico.__version__ == "0.1.0"

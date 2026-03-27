@@ -1,71 +1,94 @@
-# Open Data Mexico API
+# open-data-mexico
 
-An **unofficial** REST API that scrapes [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data portal (CKAN 2.11.2) — and exposes the data as a structured JSON API.
+![PyPI version](https://img.shields.io/pypi/v/open-data-mexico)
 
-> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages. Use responsibly and respect the site's terms of service. The API may break if the site's HTML structure changes.
+Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform (CKAN).
 
----
-
-## Available Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/` | Root — API info and link to docs |
-| `GET` | `/categories` | List all dataset categories |
-| `GET` | `/categories/{slug}` | Get a single category by slug |
-| `GET` | `/docs` | Interactive Swagger UI documentation |
-| `GET` | `/redoc` | ReDoc documentation |
-
-### Example responses
-
-**GET /categories**
-```json
-{
-  "total": 28,
-  "categories": [
-    {
-      "slug": "agricultura",
-      "name": "Agricultura",
-      "description": "Datos sobre la actividad agricola...",
-      "dataset_count": 139,
-      "image_url": "https://www.datos.gob.mx/uploads/group/agricultura.svg",
-      "url": "https://www.datos.gob.mx/group/agricultura"
-    }
-  ]
-}
-```
-
-**GET /categories/agricultura**
-```json
-{
-  "slug": "agricultura",
-  "name": "Agricultura",
-  "description": "Datos sobre la actividad agricola...",
-  "dataset_count": 139,
-  "image_url": "https://www.datos.gob.mx/uploads/group/agricultura.svg",
-  "url": "https://www.datos.gob.mx/group/agricultura"
-}
-```
+> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages. Use responsibly and respect the site's terms of service. The client may break if the site's HTML structure changes.
 
 ---
 
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+pip install open-data-mexico
 ```
 
-## Running the API
+## Quick Start
 
-```bash
-uvicorn app.main:app --reload
+```python
+import asyncio
+from open_data_mexico import DatosGobMX
+
+async def main():
+    async with DatosGobMX() as client:
+        # Fetch all categories
+        categories = await client.get_categories()
+        for cat in categories:
+            print(f"{cat.slug}: {cat.name} ({cat.dataset_count} datasets)")
+
+        # Fetch a single category by slug
+        salud = await client.get_category("salud")
+        if salud:
+            print(salud.model_dump())
+
+asyncio.run(main())
 ```
 
-The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive documentation.
+---
 
-## Running Tests
+## Available Methods
+
+| Method | Return type | Description |
+|--------|-------------|-------------|
+| `get_categories()` | `list[Category]` | Fetch all categories from datos.gob.mx/group/ |
+| `get_category(slug)` | `Category \| None` | Fetch a single category by slug; returns None if not found |
+
+### Category model fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `slug` | `str` | URL identifier |
+| `name` | `str` | Human-readable name |
+| `description` | `str \| None` | Short description |
+| `dataset_count` | `int` | Number of datasets in the category |
+| `image_url` | `str \| None` | Category image URL |
+| `url` | `str` | Full URL to the category page |
+
+---
+
+## Optional: FastAPI Server
+
+Install the server extra to run a REST API on top of the library:
 
 ```bash
+pip install open-data-mexico[server]
+```
+
+Run the server:
+
+```bash
+uvicorn server.app:app --reload
+```
+
+The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive Swagger documentation.
+
+### Server endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Root — API info |
+| `GET` | `/categories` | List all dataset categories |
+| `GET` | `/categories/{slug}` | Get a single category by slug |
+| `GET` | `/docs` | Interactive Swagger UI |
+| `GET` | `/redoc` | ReDoc documentation |
+
+---
+
+## Development Setup
+
+```bash
+pip install open-data-mexico[dev]
 pytest
 ```
 
@@ -111,36 +134,3 @@ The portal currently exposes 28 thematic categories:
 | `territorio` | Territorio |
 | `trabajo` | Trabajo |
 | `turismo` | Turismo |
-
----
-
-## Project Structure
-
-```
-open-data-mexico-api/
-├── app/
-│   ├── __init__.py
-│   ├── main.py          # FastAPI application and route definitions
-│   ├── config.py        # Base URL and HTTP headers
-│   ├── scrapers/
-│   │   ├── __init__.py
-│   │   └── categories.py  # HTML scraper for /group/ pages
-│   └── models/
-│       ├── __init__.py
-│       └── schemas.py     # Pydantic models
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py        # Pytest fixtures with mock HTML
-│   └── test_categories.py # Unit and integration tests
-├── requirements.txt
-├── pyproject.toml
-└── README.md
-```
-
-## Tech Stack
-
-- **FastAPI** — web framework
-- **httpx** — async HTTP client for scraping
-- **BeautifulSoup4 + lxml** — HTML parsing
-- **Pydantic** — data validation and serialization
-- **pytest + pytest-asyncio + pytest-httpx** — testing
