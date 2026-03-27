@@ -93,6 +93,19 @@ class DatasetsResponse(BaseModel):
     datasets: list[Dataset] = Field(description="List of dataset objects.")
 
 
+class SearchResponse(BaseModel):
+    """Wrapper returned by search() and the REST server's GET /search endpoint."""
+
+    total: int = Field(description="Total number of matching datasets on the portal.")
+    query: str = Field(description="The search term that was used.")
+    category: str | None = Field(
+        default=None,
+        description="Category slug filter applied to the search, or None if unrestricted.",
+    )
+    offset: int = Field(default=0, description="Number of results skipped (for pagination).")
+    datasets: list[Dataset] = Field(description="Page of matching dataset objects.")
+
+
 class Resource(BaseModel):
     """A single downloadable resource file attached to a dataset.
 

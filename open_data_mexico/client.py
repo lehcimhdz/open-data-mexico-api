@@ -25,7 +25,7 @@ import httpx
 
 from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._scrapers.categories import fetch_all_categories
-from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource
+from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource, SearchResponse
 
 
 class DatosGobMX:
@@ -282,3 +282,77 @@ class DatosGobMX:
         finally:
             if not self._client:
                 await client.aclose()
+
+    async def search(
+        self,
+        query: str,
+        *,
+        category: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> SearchResponse:
+        """Search datasets by keyword using the CKAN JSON API.
+
+        Unlike :meth:`get_category_datasets`, this searches across all
+        categories and returns results ranked by relevance (most recently
+        updated first). Results are **not** cached because search queries
+        are too varied to benefit from a shared TTL cache.
+
+        Args:
+            query: Free-text search term, e.g. ``"rezago social"`` or
+                   ``"incidencia delictiva"``.
+            category: Optional category slug to restrict results,
+                      e.g. ``"salud"``. When provided only datasets in
+                      that category are returned.
+            limit: Maximum number of results per page (default 20, max 1 000).
+            offset: Number of results to skip — use with ``limit`` to paginate
+                    through large result sets.
+
+        Returns:
+            A :class:`~open_data_mexico.models.SearchResponse` with the
+            ``total`` count of matching datasets on the portal plus the
+            current page of :class:`~open_data_mexico.models.Dataset` objects.
+
+        Raises:
+            httpx.HTTPStatusError: On non-2xx API responses.
+            httpx.RequestError: On network failures.
+            ValueError: If the CKAN API returns an error response.
+
+        Example::
+
+            async with DatosGobMX() as client:
+                resp = await client.search("rezago social")
+                print(resp.total, "datasets encontrados")
+                for ds in resp.datasets:
+                    print(ds.title, ds.organization_name)
+
+                # Paginar
+                page2 = await client.search("salud", limit=20, offset=20)
+
+                # Filtrar por categoría
+                result = await client.search("mortalidad", category="salud")
+        """
+        from open_data_mexico._scrapers.search import search_datasets
+
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            total, datasets = await search_datasets(
+                client,
+                query,
+                category=category,
+                limit=limit,
+                offset=offset,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
+        finally:
+            if not self._client:
+                await client.aclose()
+
+        return SearchResponse(
+            total=total,
+            query=query,
+            category=category,
+            offset=offset,
+            datasets=datasets,
+        )

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 
 from open_data_mexico import (
     CategoriesResponse,
@@ -8,6 +8,7 @@ from open_data_mexico import (
     DatasetDetail,
     DatasetsResponse,
     DatosGobMX,
+    SearchResponse,
 )
 
 
@@ -76,3 +77,15 @@ async def get_dataset(slug: str, request: Request):
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Dataset '{slug}' not found")
     return detail
+
+
+@app.get("/search", response_model=SearchResponse)
+async def search_datasets(
+    request: Request,
+    q: str = Query(..., description="Free-text search term, e.g. 'rezago social'"),
+    category: str | None = Query(None, description="Category slug to restrict results"),
+    limit: int = Query(20, ge=1, le=1000, description="Results per page"),
+    offset: int = Query(0, ge=0, description="Results to skip for pagination"),
+):
+    """Search datasets by keyword across all categories."""
+    return await _get_client(request).search(q, category=category, limit=limit, offset=offset)

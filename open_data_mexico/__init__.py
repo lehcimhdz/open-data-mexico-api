@@ -28,6 +28,9 @@ Public API surface
 :class:`DatasetDetail`
     Full detail of a dataset page including all resources and metadata.
 
+:class:`SearchResponse`
+    Result of a keyword search via the CKAN API.
+
 Quick start::
 
     import asyncio
@@ -50,6 +53,7 @@ from open_data_mexico.models import (
     DatasetDetail,
     DatasetsResponse,
     Resource,
+    SearchResponse,
 )
 
 __version__ = "0.1.0"
@@ -58,7 +62,8 @@ __all__ = [
     "Category",
     "CategoriesResponse",
     "Dataset",
+    "DatasetDetail",
     "DatasetsResponse",
     "Resource",
-    "DatasetDetail",
+    "SearchResponse",
 ]
