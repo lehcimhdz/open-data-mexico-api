@@ -8,3 +8,12 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
 }
+
+# Seconds to wait between requests (0 = no delay). Increase to avoid hammering the site.
+REQUEST_DELAY: float = 0.0
+
+# Number of retry attempts on transient failures (5xx, 429, network errors).
+MAX_RETRIES: int = 3
+
+# Seconds to cache responses in memory (0 = disabled). 300 = 5 minutes.
+CACHE_TTL: float = 300.0

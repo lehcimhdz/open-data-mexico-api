@@ -16,7 +16,8 @@ Pagination sits in ul.pagination; URL pattern: /group/{slug}?page={n}.
 import re
 import httpx
 from bs4 import BeautifulSoup
-from open_data_mexico._config import BASE_URL
+from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._http import robust_get
 from open_data_mexico.models import Dataset
 
 
@@ -111,6 +112,10 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
 def _get_total_pages(html: str) -> int:
     """Return the total number of pages by reading the pagination widget.
 
+    Scans all ``li`` elements inside ``ul.pagination`` — including active
+    items (which may be ``span`` instead of ``a``) and disabled end caps —
+    to avoid missing the last page when it is rendered as a non-link element.
+
     Args:
         html: Raw HTML of any ``/group/{slug}`` page.
 
@@ -118,20 +123,28 @@ def _get_total_pages(html: str) -> int:
         Maximum page number found in ``ul.pagination``, or 1 if no pagination.
     """
     soup = BeautifulSoup(html, "lxml")
-    pages = []
-    for a in soup.select("ul.pagination li.page-item a.page-link"):
-        text = a.get_text(strip=True)
+    pages: set[int] = set()
+    for li in soup.select("ul.pagination li"):
+        text = li.get_text(strip=True)
         if text.isdigit():
-            pages.append(int(text))
+            pages.add(int(text))
     return max(pages) if pages else 1
 
 
-async def fetch_category_datasets(client: httpx.AsyncClient, category_slug: str) -> list[Dataset]:
+async def fetch_category_datasets(
+    client: httpx.AsyncClient,
+    category_slug: str,
+    *,
+    request_delay: float = REQUEST_DELAY,
+    max_retries: int = MAX_RETRIES,
+) -> list[Dataset]:
     """Fetch all datasets for a category across all pages.
 
     Args:
         client: An active ``httpx.AsyncClient`` with appropriate headers.
         category_slug: The category URL identifier, e.g. ``"seguridad"``.
+        request_delay: Seconds to sleep after each successful request (rate limiting).
+        max_retries: Retry attempts on transient failures.
 
     Returns:
         Combined list of all Dataset objects from every page, in site order
@@ -141,13 +154,19 @@ async def fetch_category_datasets(client: httpx.AsyncClient, category_slug: str)
         httpx.HTTPStatusError: On non-2xx HTTP responses (404 if the slug
             does not match any category).
     """
-    resp = await client.get(f"{BASE_URL}/group/{category_slug}")
+    resp = await robust_get(
+        client, f"{BASE_URL}/group/{category_slug}",
+        request_delay=request_delay, max_retries=max_retries,
+    )
     resp.raise_for_status()
     total_pages = _get_total_pages(resp.text)
     datasets = _parse_datasets_page(resp.text)
 
     for page in range(2, total_pages + 1):
-        resp = await client.get(f"{BASE_URL}/group/{category_slug}", params={"page": page})
+        resp = await robust_get(
+            client, f"{BASE_URL}/group/{category_slug}", params={"page": page},
+            request_delay=request_delay, max_retries=max_retries,
+        )
         resp.raise_for_status()
         datasets.extend(_parse_datasets_page(resp.text))
 

@@ -11,10 +11,18 @@ One-shot usage (opens and closes a connection per call):
 
     client = DatosGobMX()
     categories = await client.get_categories()
+
+Rate limiting (avoid hammering the site):
+
+    async with DatosGobMX(request_delay=0.5) as client:
+        ...
 """
 
+from time import monotonic
+from typing import Any
+
 import httpx
-from open_data_mexico._config import HEADERS
+from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetDetail, Resource
 from open_data_mexico._scrapers.categories import fetch_all_categories
 
@@ -29,6 +37,12 @@ class DatosGobMX:
 
     Args:
         timeout: HTTP request timeout in seconds. Defaults to 30.
+        request_delay: Seconds to wait between requests. Increase to avoid
+            hammering the site (e.g. ``0.5``). Defaults to 0 (no delay).
+        max_retries: Number of retry attempts on transient 5xx/429 or
+            network failures. Defaults to 3.
+        cache_ttl: Seconds to keep responses in memory. Set to ``0`` to
+            disable caching. Defaults to 300 (5 minutes).
 
     Example::
 
@@ -36,16 +50,48 @@ class DatosGobMX:
         from open_data_mexico import DatosGobMX
 
         async def main():
-            async with DatosGobMX() as client:
+            async with DatosGobMX(request_delay=0.5) as client:
                 for cat in await client.get_categories():
                     print(cat.slug, cat.dataset_count)
 
         asyncio.run(main())
     """
 
-    def __init__(self, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        timeout: float = 30.0,
+        request_delay: float = REQUEST_DELAY,
+        max_retries: int = MAX_RETRIES,
+        cache_ttl: float = CACHE_TTL,
+    ) -> None:
         self._timeout = timeout
+        self._request_delay = request_delay
+        self._max_retries = max_retries
+        self._cache_ttl = cache_ttl
+        self._cache: dict[str, tuple[float, Any]] = {}
         self._client: httpx.AsyncClient | None = None
+
+    # ------------------------------------------------------------------
+    # Internal cache helpers
+    # ------------------------------------------------------------------
+
+    def _cache_get(self, key: str) -> Any | None:
+        """Return cached value for *key* if still fresh, else None."""
+        if self._cache_ttl <= 0:
+            return None
+        entry = self._cache.get(key)
+        if entry is None:
+            return None
+        expiry, data = entry
+        if monotonic() < expiry:
+            return data
+        del self._cache[key]
+        return None
+
+    def _cache_set(self, key: str, data: Any) -> None:
+        """Store *data* under *key* with the configured TTL."""
+        if self._cache_ttl > 0:
+            self._cache[key] = (monotonic() + self._cache_ttl, data)
 
     async def __aenter__(self) -> "DatosGobMX":
         self._client = httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
@@ -60,6 +106,7 @@ class DatosGobMX:
         """Fetch every category from datos.gob.mx/group/.
 
         Automatically paginates through all pages (currently 2).
+        Results are cached in memory for ``cache_ttl`` seconds.
 
         Returns:
             A list of :class:`~open_data_mexico.models.Category` objects,
@@ -69,12 +116,23 @@ class DatosGobMX:
             httpx.HTTPStatusError: If the server returns a non-2xx response.
             httpx.RequestError: On network-level failures (timeout, DNS, etc.).
         """
+        cached = self._cache_get("categories")
+        if cached is not None:
+            return cached
+
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
-            return await fetch_all_categories(client)
+            result = await fetch_all_categories(
+                client,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
         finally:
             if not self._client:
                 await client.aclose()
+
+        self._cache_set("categories", result)
+        return result
 
     async def get_category(self, slug: str) -> Category | None:
         """Fetch a single category by its slug.
@@ -102,6 +160,7 @@ class DatosGobMX:
 
         Automatically paginates through all pages of the category's
         dataset listing (e.g. ``/group/seguridad?page=2``).
+        Results are cached in memory for ``cache_ttl`` seconds.
 
         Args:
             category_slug: The URL identifier of the category, e.g.
@@ -119,12 +178,25 @@ class DatosGobMX:
             httpx.RequestError: On network-level failures (timeout, DNS, etc.).
         """
         from open_data_mexico._scrapers.datasets import fetch_category_datasets
+
+        cache_key = f"datasets:{category_slug}"
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
-            return await fetch_category_datasets(client, category_slug)
+            result = await fetch_category_datasets(
+                client, category_slug,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
         finally:
             if not self._client:
                 await client.aclose()
+
+        self._cache_set(cache_key, result)
+        return result
 
     async def get_dataset(self, slug: str) -> DatasetDetail | None:
         """Fetch the full detail page for a dataset.
@@ -141,12 +213,26 @@ class DatosGobMX:
             httpx.RequestError: On network failures.
         """
         from open_data_mexico._scrapers.dataset_detail import fetch_dataset_detail
+
+        cache_key = f"dataset:{slug}"
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
-            return await fetch_dataset_detail(client, slug)
+            result = await fetch_dataset_detail(
+                client, slug,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
         finally:
             if not self._client:
                 await client.aclose()
+
+        if result is not None:
+            self._cache_set(cache_key, result)
+        return result
 
     async def get_resource_data(self, resource: Resource) -> str:
         """Download a resource file into memory as a string — no disk writes.

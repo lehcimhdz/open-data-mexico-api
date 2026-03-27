@@ -16,7 +16,8 @@ maximum numeric link text.
 import re
 import httpx
 from bs4 import BeautifulSoup
-from open_data_mexico._config import BASE_URL
+from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._http import robust_get
 from open_data_mexico.models import Category
 
 
@@ -98,6 +99,10 @@ async def _parse_categories_page(html: str) -> list[Category]:
 async def _get_total_pages(html: str) -> int:
     """Return the total number of pages by reading the pagination widget.
 
+    Scans all ``li`` elements inside ``ul.pagination`` — including active
+    items (which may be ``span`` instead of ``a``) and disabled end caps —
+    to avoid missing the last page when it is rendered as a non-link element.
+
     Args:
         html: Raw HTML of any /group/ page.
 
@@ -105,22 +110,29 @@ async def _get_total_pages(html: str) -> int:
         Maximum page number found in ul.pagination, or 1 if no pagination.
     """
     soup = BeautifulSoup(html, "lxml")
-    pages = []
-    for a in soup.select("ul.pagination li a"):
-        text = a.get_text(strip=True)
+    pages: set[int] = set()
+    for li in soup.select("ul.pagination li"):
+        text = li.get_text(strip=True)
         if text.isdigit():
-            pages.append(int(text))
+            pages.add(int(text))
     return max(pages) if pages else 1
 
 
-async def fetch_all_categories(client: httpx.AsyncClient) -> list[Category]:
+async def fetch_all_categories(
+    client: httpx.AsyncClient,
+    *,
+    request_delay: float = REQUEST_DELAY,
+    max_retries: int = MAX_RETRIES,
+) -> list[Category]:
     """Fetch all categories across all pages.
 
     Fetches page 1 first to detect the total page count, then fetches
-    any remaining pages concurrently (currently sequential, safe for rate limits).
+    remaining pages sequentially with retry/backoff on transient failures.
 
     Args:
         client: An active ``httpx.AsyncClient`` with appropriate headers.
+        request_delay: Seconds to sleep after each successful request (rate limiting).
+        max_retries: Retry attempts on transient failures.
 
     Returns:
         Combined list of all Category objects from every page, in site order.
@@ -128,8 +140,10 @@ async def fetch_all_categories(client: httpx.AsyncClient) -> list[Category]:
     Raises:
         httpx.HTTPStatusError: On non-2xx HTTP responses.
     """
-    # Fetch first page to determine total pages
-    resp = await client.get(f"{BASE_URL}/group/?page=1")
+    resp = await robust_get(
+        client, f"{BASE_URL}/group/", params={"page": 1},
+        request_delay=request_delay, max_retries=max_retries,
+    )
     resp.raise_for_status()
     first_page_html = resp.text
 
@@ -137,9 +151,11 @@ async def fetch_all_categories(client: httpx.AsyncClient) -> list[Category]:
     all_categories = await _parse_categories_page(first_page_html)
 
     for page in range(2, total_pages + 1):
-        resp = await client.get(f"{BASE_URL}/group/?page={page}")
+        resp = await robust_get(
+            client, f"{BASE_URL}/group/", params={"page": page},
+            request_delay=request_delay, max_retries=max_retries,
+        )
         resp.raise_for_status()
-        categories = await _parse_categories_page(resp.text)
-        all_categories.extend(categories)
+        all_categories.extend(await _parse_categories_page(resp.text))
 
     return all_categories

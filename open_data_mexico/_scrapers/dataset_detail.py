@@ -23,16 +23,25 @@ Per-resource (ul.resource-list li.resource-item):
 
 import httpx
 from bs4 import BeautifulSoup
-from open_data_mexico._config import BASE_URL
+from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._http import robust_get
 from open_data_mexico.models import DatasetDetail, Resource
 
 
-async def fetch_dataset_detail(client: httpx.AsyncClient, slug: str) -> DatasetDetail | None:
+async def fetch_dataset_detail(
+    client: httpx.AsyncClient,
+    slug: str,
+    *,
+    request_delay: float = REQUEST_DELAY,
+    max_retries: int = MAX_RETRIES,
+) -> DatasetDetail | None:
     """Fetch full detail for a dataset by slug.
 
     Args:
         client: Active httpx.AsyncClient.
         slug: Dataset URL identifier, e.g. 'expedientes_clasificados_ceav'.
+        request_delay: Seconds to sleep after each successful request (rate limiting).
+        max_retries: Retry attempts on transient failures.
 
     Returns:
         DatasetDetail if the page exists, None if 404.
@@ -40,7 +49,10 @@ async def fetch_dataset_detail(client: httpx.AsyncClient, slug: str) -> DatasetD
     Raises:
         httpx.HTTPStatusError: On non-404 HTTP errors.
     """
-    resp = await client.get(f"{BASE_URL}/dataset/{slug}")
+    resp = await robust_get(
+        client, f"{BASE_URL}/dataset/{slug}",
+        request_delay=request_delay, max_retries=max_retries,
+    )
     if resp.status_code == 404:
         return None
     resp.raise_for_status()
