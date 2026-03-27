@@ -108,6 +108,66 @@ async def test_get_resource_data_no_url_raises():
         assert "download_url" in str(e)
 
 
+async def test_prs_parse_title(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert detail.title == "Cuaderno Mensual Estadístico Penitenciario (enero, 2026)"
+
+
+async def test_prs_parse_organization(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert detail.organization_slug == "prs"
+    assert "Prevención y Reinserción Social" in detail.organization_name
+
+
+async def test_prs_parse_description(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert detail.description and "privada de la libertad" in detail.description
+
+
+async def test_prs_parse_multiple_resources(dataset_detail_prs_html):
+    """Dataset with multiple resources: all are parsed and fields are independent."""
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert len(detail.resources) == 3
+    ids = [r.resource_id for r in detail.resources]
+    assert "ba313dc7-391b-4900-9ec2-a475b5e46443" in ids
+    assert "29c22724-a7ad-4d44-a11c-1a305111c6c2" in ids
+    assert "aec4234c-ceaf-4551-a76d-9981235f8332" in ids
+    # All resources belong to the same org and category
+    for r in detail.resources:
+        assert r.organization_slug == "prs"
+        assert r.category_slug == "seguridad"
+        assert r.format == "csv"
+        assert r.download_url and "repodatos.atdt.gob.mx" in r.download_url
+        assert r.description is not None
+
+
+async def test_prs_resource_download_urls_are_distinct(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    urls = [r.download_url for r in detail.resources]
+    assert len(urls) == len(set(urls)), "Each resource must have a unique download URL"
+
+
+async def test_prs_parse_tags(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert len(detail.tags) == 11
+    assert "centro penitenciario" in detail.tags
+    assert "prisión" in detail.tags
+    assert "sistema judicial" in detail.tags
+
+
+async def test_prs_parse_timestamps(dataset_detail_prs_html):
+    slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
+    detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
+    assert detail.created == "2026-03-09T21:40:15+0000"
+    assert detail.last_updated == "2026-03-10T17:11:45+0000"
+
+
 async def test_get_resource_data_streams_csv(httpx_mock: HTTPXMock):
     csv_content = "col1,col2\nval1,val2\n"
     httpx_mock.add_response(

@@ -282,3 +282,191 @@ def dataset_detail_html() -> str:
 </div>
 </body>
 </html>"""
+
+
+@pytest.fixture
+def dataset_detail_prs_html() -> str:
+    """Real HTML structure from datos.gob.mx/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026.
+
+    This dataset has 36 resources; the fixture retains 3 representative ones
+    plus the first and last to keep it concise while exercising multi-resource parsing.
+    """
+    return """<!DOCTYPE html>
+<html lang="es">
+<body>
+<div class="jumbotron jumbotron-fluid" style="height: 220px; width: 100%;">
+  <div class="d-flex flex-column justify-content-center align-items-center text-white h-100">
+    <h1 class="text-center jumbotron-title font-weight-bolder">
+      Cuaderno Mensual Estadístico Penitenciario (enero, 2026)
+    </h1>
+  </div>
+</div>
+<div class="main">
+  <div id="content" class="container">
+    <div class="row">
+      <aside class="secondary col-md-4 px-2">
+        <section id="organization-info" class="module module-narrow">
+          <div class="module card custom-card mb-2 context-info">
+            <div class="module-content">
+              <div class="item-image-wrapper">
+                <a href="/organization/prs">
+                  <img class="item-image" src="https://www.datos.gob.mx/uploads/group/2025-04-14-223907.623075LogoPRSpng.png" alt="prs">
+                </a>
+              </div>
+              <h1 class="heading text-gold">Prevención y Reinserción Social (PRS)</h1>
+              <p class="description">
+                Instrumenta la política penitenciaria a nivel nacional...
+              </p>
+              <p class="read-more"><a href="/organization/about/prs">leer más</a></p>
+            </div>
+          </div>
+        </section>
+        <section class="module module-narrow module-shallow license">
+          <h2 class="module-social-heading">Licencia</h2>
+          <p class="module-content">
+            <a href="https://creativecommons.org/licenses/by/4.0/" rel="dc:rights">Creative Commons Attribution 4.0</a>
+          </p>
+        </section>
+      </aside>
+      <div class="primary col-md-8 col-xs-12 px-2" role="main">
+        <div class="notes embedded-content">
+          <p>Datos de la población privada de la libertad en entidades federativas y Centros Penitenciarios Federales.</p>
+        </div>
+        <section id="dataset-resources" class="resources">
+          <ul class="resource-list">
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="ba313dc7-391b-4900-9ec2-a475b5e46443">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/ba313dc7-391b-4900-9ec2-a475b5e46443" title="Estadística penitenciaria: espacios, población y sobrepoblación por fuero, situación jurídica y sexo">
+                      Estadística penitenciaria: espacios, población...
+                    </a>
+                  </h3>
+                  <p class="mb-2">
+                    Espacios, sobrepoblación y población privada de la libertad según fuero, situación jurídica y sexo por entidad federativa y Centro Penitenciario Federal.
+                  </p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/prs">Prevención y Reinserción Social (PRS)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/ba313dc7-391b-4900-9ec2-a475b5e46443" class="btn btn-primary">Consultar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/prs/cuaderno_mensual_estadistico_penitenciario_enero_2026/fue_sjur_sex_centro1_ene26.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="29c22724-a7ad-4d44-a11c-1a305111c6c2">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/29c22724-a7ad-4d44-a11c-1a305111c6c2" title="Estadística penitenciaria: centros, población y sobrepoblación por entidad y centro">
+                      Estadística penitenciaria: centros, población...
+                    </a>
+                  </h3>
+                  <p class="mb-2">
+                    Número de centros penitenciarios, espacios, población privada de la libertad y sobrepoblación por entidad federativa y Centro Penitenciario Federal.
+                  </p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/prs">Prevención y Reinserción Social (PRS)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/29c22724-a7ad-4d44-a11c-1a305111c6c2" class="btn btn-primary">Consultar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/prs/cuaderno_mensual_estadistico_penitenciario_enero_2026/sobrepob_ent_ene26.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="aec4234c-ceaf-4551-a76d-9981235f8332">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/aec4234c-ceaf-4551-a76d-9981235f8332" title="Población penitenciaria indígena según fuero, situación jurídica y sexo por lengua">
+                      Población penitenciaria indígena según fuero,...
+                    </a>
+                  </h3>
+                  <p class="mb-2">
+                    Población indígena privada de la libertad según fuero, situación jurídica y sexo por lengua indígena.
+                  </p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/prs">Prevención y Reinserción Social (PRS)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/cuaderno_mensual_estadistico_penitenciario_enero_2026/resource/aec4234c-ceaf-4551-a76d-9981235f8332" class="btn btn-primary">Consultar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/prs/cuaderno_mensual_estadistico_penitenciario_enero_2026/ind_leng_fue_sjur_sexo_ene26.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+          </ul>
+        </section>
+        <section class="tags">
+          <ul class="tag-list">
+            <li><a class="tag" href="/dataset/?tags=administraci%C3%B3n+justicia" title="administración justicia">administración justicia</a></li>
+            <li><a class="tag" href="/dataset/?tags=centro+penitenciario" title="centro penitenciario">centro penitenciario</a></li>
+            <li><a class="tag" href="/dataset/?tags=c%C3%A1rcel" title="cárcel">cárcel</a></li>
+            <li><a class="tag" href="/dataset/?tags=delito" title="delito">delito</a></li>
+            <li><a class="tag" href="/dataset/?tags=incidencia+delictiva" title="incidencia delictiva">incidencia delictiva</a></li>
+            <li><a class="tag" href="/dataset/?tags=prisionero" title="prisionero">prisionero</a></li>
+            <li><a class="tag" href="/dataset/?tags=prisi%C3%B3n" title="prisión">prisión</a></li>
+            <li><a class="tag" href="/dataset/?tags=procedimiento+penal" title="procedimiento penal">procedimiento penal</a></li>
+            <li><a class="tag" href="/dataset/?tags=sanci%C3%B3n+penal" title="sanción penal">sanción penal</a></li>
+            <li><a class="tag" href="/dataset/?tags=sentencia" title="sentencia">sentencia</a></li>
+            <li><a class="tag" href="/dataset/?tags=sistema+judicial" title="sistema judicial">sistema judicial</a></li>
+          </ul>
+        </section>
+        <section class="additional-info">
+          <table class="table table-striped table-bordered table-condensed">
+            <thead>
+              <tr><th scope="col">Campo</th><th scope="col">Valor</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="dataset-label">Administrador</th>
+                <td class="dataset-details" property="dc:contributor">Prevención y Reinserción Social (PRS)</td>
+              </tr>
+              <tr>
+                <th scope="row" class="dataset-label">Última actualización</th>
+                <td class="dataset-details">
+                  <span class="automatic-local-datetime" data-datetime="2026-03-10T17:11:45+0000">10 de marzo de 2026, 11:11 (UTC-06:00)</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" class="dataset-label">Creado</th>
+                <td class="dataset-details">
+                  <span class="automatic-local-datetime" data-datetime="2026-03-09T21:40:15+0000">9 de marzo de 2026, 15:40 (UTC-06:00)</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>"""

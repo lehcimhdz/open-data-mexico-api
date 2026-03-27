@@ -1,5 +1,10 @@
 BASE_URL = "https://www.datos.gob.mx"
 HEADERS = {
-    "User-Agent": "open-data-mexico/0.1.0 (https://pypi.org/project/open-data-mexico/)",
-    "Accept-Language": "es-MX,es;q=0.9",
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
 }
