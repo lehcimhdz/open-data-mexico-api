@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from open_data_mexico import DatosGobMX, Category, CategoriesResponse
+from open_data_mexico import DatosGobMX, Category, CategoriesResponse, Dataset, DatasetsResponse
 
 app = FastAPI(
     title="Open Data Mexico API",
@@ -24,3 +24,13 @@ async def get_category(slug: str):
     if category is None:
         raise HTTPException(status_code=404, detail=f"Category '{slug}' not found")
     return category
+
+@app.get("/categories/{slug}/datasets", response_model=DatasetsResponse)
+async def list_category_datasets(slug: str):
+    async with DatosGobMX() as client:
+        # First verify category exists
+        category = await client.get_category(slug)
+        if category is None:
+            raise HTTPException(status_code=404, detail=f"Category '{slug}' not found")
+        datasets = await client.get_category_datasets(slug)
+    return DatasetsResponse(total=len(datasets), category_slug=slug, datasets=datasets)
