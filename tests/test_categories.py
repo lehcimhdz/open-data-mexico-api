@@ -1,15 +1,15 @@
-import httpx
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import httpx
+
+from open_data_mexico import DatosGobMX
 from open_data_mexico._scrapers.categories import (
-    _parse_categories_page,
     _get_total_pages,
+    _parse_categories_page,
     fetch_all_categories,
 )
 from open_data_mexico.models import Category
-from open_data_mexico import DatosGobMX
 from server.app import app
-
 
 # ---------------------------------------------------------------------------
 # Unit tests for scraper helpers
@@ -103,7 +103,9 @@ async def test_api_categories_endpoint():
         "open_data_mexico._scrapers.categories.fetch_all_categories",
         new=AsyncMock(return_value=MOCK_CATEGORIES),
     ):
-        with patch.object(DatosGobMX, "get_categories", new=AsyncMock(return_value=MOCK_CATEGORIES)):
+        with patch.object(
+            DatosGobMX, "get_categories", new=AsyncMock(return_value=MOCK_CATEGORIES)
+        ):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             ) as client:
@@ -164,6 +166,7 @@ async def test_client_get_category_returns_none_when_not_found():
 
 def test_package_exports():
     import open_data_mexico
+
     assert hasattr(open_data_mexico, "DatosGobMX")
     assert hasattr(open_data_mexico, "Category")
     assert hasattr(open_data_mexico, "CategoriesResponse")

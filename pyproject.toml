@@ -82,6 +82,9 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/conftest.py" = ["E501"]  # HTML fixtures have naturally long lines
+
 [tool.mypy]
 python_version = "3.11"
 strict = false

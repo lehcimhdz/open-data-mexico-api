@@ -61,7 +61,7 @@ async def robust_get(
 
     for attempt in range(max_retries):
         if attempt > 0:
-            backoff = 2 ** attempt  # 2s, 4s, 8s …
+            backoff = 2**attempt  # 2s, 4s, 8s …
             logger.debug(
                 "Retry %d/%d for %s — backing off %.0fs",
                 attempt,

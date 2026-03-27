@@ -1,19 +1,20 @@
-import httpx
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import httpx
+
+from open_data_mexico import DatosGobMX
 from open_data_mexico._scrapers.datasets import (
-    fetch_category_datasets,
-    _parse_datasets_page,
     _get_total_pages,
+    _parse_datasets_page,
+    fetch_category_datasets,
 )
 from open_data_mexico.models import Category, Dataset
-from open_data_mexico import DatosGobMX
 from server.app import app
-
 
 # ---------------------------------------------------------------------------
 # Unit tests for scraper helpers
 # ---------------------------------------------------------------------------
+
 
 def test_parse_datasets_page_extracts_fields(datasets_page_1_html):
     datasets = _parse_datasets_page(datasets_page_1_html)
@@ -56,8 +57,12 @@ def test_get_total_pages_single():
 async def test_fetch_category_datasets_combines_pages(
     httpx_mock, datasets_page_1_html, datasets_page_2_html
 ):
-    httpx_mock.add_response(url="https://www.datos.gob.mx/group/seguridad", text=datasets_page_1_html)
-    httpx_mock.add_response(url="https://www.datos.gob.mx/group/seguridad?page=2", text=datasets_page_2_html)
+    httpx_mock.add_response(
+        url="https://www.datos.gob.mx/group/seguridad", text=datasets_page_1_html
+    )
+    httpx_mock.add_response(
+        url="https://www.datos.gob.mx/group/seguridad?page=2", text=datasets_page_2_html
+    )
     async with httpx.AsyncClient() as client:
         datasets = await fetch_category_datasets(client, "seguridad")
     assert len(datasets) == 3
@@ -120,7 +125,9 @@ async def test_client_get_category_datasets():
 
 async def test_api_datasets_endpoint():
     with patch.object(DatosGobMX, "get_category", new=AsyncMock(return_value=MOCK_CATEGORY)):
-        with patch.object(DatosGobMX, "get_category_datasets", new=AsyncMock(return_value=MOCK_DATASETS)):
+        with patch.object(
+            DatosGobMX, "get_category_datasets", new=AsyncMock(return_value=MOCK_DATASETS)
+        ):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             ) as client:

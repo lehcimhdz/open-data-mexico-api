@@ -1,10 +1,11 @@
-import httpx
 from unittest.mock import AsyncMock, patch
+
+import httpx
 from pytest_httpx import HTTPXMock
 
+from open_data_mexico import DatosGobMX
 from open_data_mexico._scrapers.dataset_detail import _parse_dataset_detail, fetch_dataset_detail
 from open_data_mexico.models import DatasetDetail, Resource
-from open_data_mexico import DatosGobMX
 
 
 async def test_parse_title(dataset_detail_html):
@@ -55,12 +56,15 @@ async def test_parse_resource_fields(dataset_detail_html):
     assert r.category_name == "Seguridad"
     assert r.organization_slug == "ceav"
     assert r.organization_name == "Comisión Ejecutiva de Atención a Víctimas (CEAV)"
-    assert r.download_url == "https://repodatos.atdt.gob.mx/api_update/ceav/expedientes_clasificados_ceav/Expedientes_clasificados_CEAV.csv"
+    assert (
+        r.download_url
+        == "https://repodatos.atdt.gob.mx/api_update/ceav/expedientes_clasificados_ceav/Expedientes_clasificados_CEAV.csv"
+    )
     assert "expedientes_clasificados_ceav/resource/" in r.detail_url
 
 
 async def test_parse_resource_description(dataset_detail_html):
-    """Plain description paragraph is captured; labeled paragraphs (Categoría, Formatos, etc.) are not."""
+    """Plain description paragraph is captured; labeled paragraphs are not."""
     detail = _parse_dataset_detail(dataset_detail_html, "expedientes_clasificados_ceav")
     r = detail.resources[0]
     assert r.description is not None
@@ -72,9 +76,7 @@ async def test_parse_resource_description(dataset_detail_html):
 
 async def test_fetch_dataset_returns_none_on_404(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://www.datos.gob.mx/dataset/nonexistent",
-        status_code=404,
-        text="Not found"
+        url="https://www.datos.gob.mx/dataset/nonexistent", status_code=404, text="Not found"
     )
     async with httpx.AsyncClient() as client:
         result = await fetch_dataset_detail(client, "nonexistent")
@@ -102,7 +104,7 @@ async def test_get_resource_data_no_url_raises():
     client = DatosGobMX()
     try:
         await client.get_resource_data(resource)
-        assert False, "Should have raised"
+        raise AssertionError("Should have raised ValueError")
     except ValueError as e:
         assert "download_url" in str(e)
 
@@ -212,9 +214,14 @@ async def test_sesnsp_parse_resources(dataset_detail_sesnsp_html):
 async def test_sesnsp_visualizar_resource_has_detail_url(dataset_detail_sesnsp_html):
     """Resource with 'Visualizar' button still gets detail_url from the h3 link."""
     detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
-    estatal = next(r for r in detail.resources if r.resource_id == "d9b2792a-33a2-4ea8-8527-210d9e99de5e")
+    estatal = next(
+        r for r in detail.resources if r.resource_id == "d9b2792a-33a2-4ea8-8527-210d9e99de5e"
+    )
     assert estatal.detail_url and "incidencia_delictiva/resource/d9b2792a" in estatal.detail_url
-    assert estatal.download_url == "https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/INM_estatal_dic25.csv"
+    assert (
+        estatal.download_url
+        == "https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/INM_estatal_dic25.csv"
+    )
 
 
 async def test_sesnsp_parse_tags(dataset_detail_sesnsp_html):

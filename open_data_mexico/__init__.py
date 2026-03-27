@@ -41,8 +41,16 @@ Quick start::
 
     asyncio.run(main())
 """
+
 from open_data_mexico.client import DatosGobMX
-from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetsResponse, Resource, DatasetDetail
+from open_data_mexico.models import (
+    CategoriesResponse,
+    Category,
+    Dataset,
+    DatasetDetail,
+    DatasetsResponse,
+    Resource,
+)
 
 __version__ = "0.1.0"
 __all__ = [

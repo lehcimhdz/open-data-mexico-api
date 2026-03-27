@@ -14,8 +14,10 @@ maximum numeric link text.
 """
 
 import re
+
 import httpx
 from bs4 import BeautifulSoup
+
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
 from open_data_mexico.models import Category
@@ -141,8 +143,11 @@ async def fetch_all_categories(
         httpx.HTTPStatusError: On non-2xx HTTP responses.
     """
     resp = await robust_get(
-        client, f"{BASE_URL}/group/", params={"page": 1},
-        request_delay=request_delay, max_retries=max_retries,
+        client,
+        f"{BASE_URL}/group/",
+        params={"page": 1},
+        request_delay=request_delay,
+        max_retries=max_retries,
     )
     resp.raise_for_status()
     first_page_html = resp.text
@@ -152,8 +157,11 @@ async def fetch_all_categories(
 
     for page in range(2, total_pages + 1):
         resp = await robust_get(
-            client, f"{BASE_URL}/group/", params={"page": page},
-            request_delay=request_delay, max_retries=max_retries,
+            client,
+            f"{BASE_URL}/group/",
+            params={"page": page},
+            request_delay=request_delay,
+            max_retries=max_retries,
         )
         resp.raise_for_status()
         all_categories.extend(await _parse_categories_page(resp.text))

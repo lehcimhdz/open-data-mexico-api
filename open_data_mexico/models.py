@@ -7,7 +7,6 @@ currently publishes — no transformations beyond basic text cleanup.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class Category(BaseModel):
@@ -19,14 +18,14 @@ class Category(BaseModel):
 
     slug: str = Field(description="URL-safe identifier used in paths, e.g. 'seguridad'.")
     name: str = Field(description="Human-readable display name, e.g. 'Seguridad'.")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Short summary of what the category covers, as shown on the listing page.",
     )
     dataset_count: int = Field(
         description="Number of datasets currently associated with this category."
     )
-    image_url: Optional[str] = Field(
+    image_url: str | None = Field(
         default=None,
         description="Absolute URL of the category's SVG icon.",
     )
@@ -50,36 +49,36 @@ class Dataset(BaseModel):
 
     slug: str = Field(
         description="URL-safe identifier, e.g. 'incidencia_delictiva'. "
-                    "Matches the last path segment of the dataset URL."
+        "Matches the last path segment of the dataset URL."
     )
     title: str = Field(description="Full display title of the dataset.")
-    last_updated: Optional[str] = Field(
+    last_updated: str | None = Field(
         default=None,
         description="Date of the last update as a Spanish-locale string, "
-                    "e.g. '3 de marzo 2026'. Not parsed into a date object.",
+        "e.g. '3 de marzo 2026'. Not parsed into a date object.",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Short description extracted from the listing card. "
-                    "May be truncated if the site shows an ellipsis.",
+        "May be truncated if the site shows an ellipsis.",
     )
-    category_slug: Optional[str] = Field(
+    category_slug: str | None = Field(
         default=None,
         description="Slug of the category this dataset belongs to, e.g. 'seguridad'.",
     )
-    category_name: Optional[str] = Field(
+    category_name: str | None = Field(
         default=None,
         description="Display name of the category, e.g. 'Seguridad'.",
     )
-    organization_slug: Optional[str] = Field(
+    organization_slug: str | None = Field(
         default=None,
         description="Slug of the publishing institution, e.g. 'sesnsp'.",
     )
-    organization_name: Optional[str] = Field(
+    organization_name: str | None = Field(
         default=None,
         description="Full name of the publishing institution.",
     )
-    resource_count: Optional[int] = Field(
+    resource_count: int | None = Field(
         default=None,
         description="Number of resource files (CSV, etc.) attached to this dataset.",
     )
@@ -104,18 +103,30 @@ class Resource(BaseModel):
 
     resource_id: str = Field(description="UUID of the resource, from the li[data-id] attribute.")
     name: str = Field(description="Display name of the resource file.")
-    description: Optional[str] = Field(default=None, description="Short description of this resource file's contents.")
-    format: Optional[str] = Field(default=None, description="File format in lowercase, e.g. 'csv', 'xlsx'.")
-    category_slug: Optional[str] = Field(default=None, description="Slug of the category this resource belongs to.")
-    category_name: Optional[str] = Field(default=None, description="Display name of the category.")
-    organization_slug: Optional[str] = Field(default=None, description="Slug of the publishing institution.")
-    organization_name: Optional[str] = Field(default=None, description="Full name of the publishing institution.")
-    download_url: Optional[str] = Field(
+    description: str | None = Field(
+        default=None, description="Short description of this resource file's contents."
+    )
+    format: str | None = Field(
+        default=None, description="File format in lowercase, e.g. 'csv', 'xlsx'."
+    )
+    category_slug: str | None = Field(
+        default=None, description="Slug of the category this resource belongs to."
+    )
+    category_name: str | None = Field(default=None, description="Display name of the category.")
+    organization_slug: str | None = Field(
+        default=None, description="Slug of the publishing institution."
+    )
+    organization_name: str | None = Field(
+        default=None, description="Full name of the publishing institution."
+    )
+    download_url: str | None = Field(
         default=None,
         description="Direct URL to download the raw file (e.g. a CSV on repodatos.atdt.gob.mx). "
-                    "Use client.get_resource_data() to stream this into memory without saving to disk."
+        "Use client.get_resource_data() to stream this into memory without saving to disk.",
     )
-    detail_url: Optional[str] = Field(default=None, description="Absolute URL to the resource's detail page on datos.gob.mx.")
+    detail_url: str | None = Field(
+        default=None, description="Absolute URL to the resource's detail page on datos.gob.mx."
+    )
 
 
 class DatasetDetail(BaseModel):
@@ -129,13 +140,30 @@ class DatasetDetail(BaseModel):
 
     slug: str = Field(description="URL identifier of the dataset.")
     title: str = Field(description="Full display title.")
-    description: Optional[str] = Field(default=None, description="Full description of what the dataset contains.")
-    organization_slug: Optional[str] = Field(default=None, description="Slug of the publishing institution.")
-    organization_name: Optional[str] = Field(default=None, description="Full name of the publishing institution.")
-    license_name: Optional[str] = Field(default=None, description="License display name, e.g. 'Creative Commons Attribution 4.0'.")
-    license_url: Optional[str] = Field(default=None, description="URL to the license text.")
-    tags: list[str] = Field(default_factory=list, description="List of tag strings associated with this dataset.")
-    created: Optional[str] = Field(default=None, description="ISO 8601 creation datetime from data-datetime attr, e.g. '2026-03-23T16:28:17+0000'.")
-    last_updated: Optional[str] = Field(default=None, description="ISO 8601 last-updated datetime from data-datetime attr.")
-    resources: list[Resource] = Field(default_factory=list, description="List of downloadable resource files.")
+    description: str | None = Field(
+        default=None, description="Full description of what the dataset contains."
+    )
+    organization_slug: str | None = Field(
+        default=None, description="Slug of the publishing institution."
+    )
+    organization_name: str | None = Field(
+        default=None, description="Full name of the publishing institution."
+    )
+    license_name: str | None = Field(
+        default=None, description="License display name, e.g. 'Creative Commons Attribution 4.0'."
+    )
+    license_url: str | None = Field(default=None, description="URL to the license text.")
+    tags: list[str] = Field(
+        default_factory=list, description="List of tag strings associated with this dataset."
+    )
+    created: str | None = Field(
+        default=None,
+        description="ISO 8601 creation datetime from data-datetime attr, e.g. '2026-03-23T16:28:17+0000'.",  # noqa: E501
+    )
+    last_updated: str | None = Field(
+        default=None, description="ISO 8601 last-updated datetime from data-datetime attr."
+    )
+    resources: list[Resource] = Field(
+        default_factory=list, description="List of downloadable resource files."
+    )
     url: str = Field(description="Absolute URL to this dataset's page.")

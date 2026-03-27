@@ -14,8 +14,10 @@ Pagination sits in ul.pagination; URL pattern: /group/{slug}?page={n}.
 """
 
 import re
+
 import httpx
 from bs4 import BeautifulSoup
+
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
 from open_data_mexico.models import Dataset
@@ -94,18 +96,20 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
                     resource_count = int(m.group(1).replace(",", ""))
                 break
 
-        datasets.append(Dataset(
-            slug=slug,
-            title=title,
-            last_updated=last_updated,
-            description=description,
-            category_slug=category_slug,
-            category_name=category_name,
-            organization_slug=organization_slug,
-            organization_name=organization_name,
-            resource_count=resource_count,
-            url=url,
-        ))
+        datasets.append(
+            Dataset(
+                slug=slug,
+                title=title,
+                last_updated=last_updated,
+                description=description,
+                category_slug=category_slug,
+                category_name=category_name,
+                organization_slug=organization_slug,
+                organization_name=organization_name,
+                resource_count=resource_count,
+                url=url,
+            )
+        )
     return datasets
 
 
@@ -155,8 +159,10 @@ async def fetch_category_datasets(
             does not match any category).
     """
     resp = await robust_get(
-        client, f"{BASE_URL}/group/{category_slug}",
-        request_delay=request_delay, max_retries=max_retries,
+        client,
+        f"{BASE_URL}/group/{category_slug}",
+        request_delay=request_delay,
+        max_retries=max_retries,
     )
     resp.raise_for_status()
     total_pages = _get_total_pages(resp.text)
@@ -164,8 +170,11 @@ async def fetch_category_datasets(
 
     for page in range(2, total_pages + 1):
         resp = await robust_get(
-            client, f"{BASE_URL}/group/{category_slug}", params={"page": page},
-            request_delay=request_delay, max_retries=max_retries,
+            client,
+            f"{BASE_URL}/group/{category_slug}",
+            params={"page": page},
+            request_delay=request_delay,
+            max_retries=max_retries,
         )
         resp.raise_for_status()
         datasets.extend(_parse_datasets_page(resp.text))

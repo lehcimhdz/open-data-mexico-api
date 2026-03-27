@@ -19,12 +19,13 @@ Rate limiting (avoid hammering the site):
 """
 
 from time import monotonic
-from typing import Any
+from typing import Any, cast
 
 import httpx
+
 from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
-from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource
 from open_data_mexico._scrapers.categories import fetch_all_categories
+from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource
 
 
 class DatosGobMX:
@@ -118,7 +119,7 @@ class DatosGobMX:
         """
         cached = self._cache_get("categories")
         if cached is not None:
-            return cached
+            return cast(list[Category], cached)
 
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
@@ -182,12 +183,13 @@ class DatosGobMX:
         cache_key = f"datasets:{category_slug}"
         cached = self._cache_get(cache_key)
         if cached is not None:
-            return cached
+            return cast(list[Dataset], cached)
 
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
             result = await fetch_category_datasets(
-                client, category_slug,
+                client,
+                category_slug,
                 request_delay=self._request_delay,
                 max_retries=self._max_retries,
             )
@@ -217,12 +219,13 @@ class DatosGobMX:
         cache_key = f"dataset:{slug}"
         cached = self._cache_get(cache_key)
         if cached is not None:
-            return cached
+            return cast(DatasetDetail, cached)
 
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
             result = await fetch_dataset_detail(
-                client, slug,
+                client,
+                slug,
                 request_delay=self._request_delay,
                 max_retries=self._max_retries,
             )

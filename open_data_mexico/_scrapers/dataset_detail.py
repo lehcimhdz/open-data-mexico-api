@@ -23,6 +23,7 @@ Per-resource (ul.resource-list li.resource-item):
 
 import httpx
 from bs4 import BeautifulSoup
+
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
 from open_data_mexico.models import DatasetDetail, Resource
@@ -50,8 +51,10 @@ async def fetch_dataset_detail(
         httpx.HTTPStatusError: On non-404 HTTP errors.
     """
     resp = await robust_get(
-        client, f"{BASE_URL}/dataset/{slug}",
-        request_delay=request_delay, max_retries=max_retries,
+        client,
+        f"{BASE_URL}/dataset/{slug}",
+        request_delay=request_delay,
+        max_retries=max_retries,
     )
     if resp.status_code == 404:
         return None
@@ -160,18 +163,20 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
         dl_a = li.select_one("a.btn-outline-primary")
         download_url = dl_a.get("href") if dl_a else None
 
-        resources.append(Resource(
-            resource_id=resource_id,
-            name=name,
-            description=resource_desc,
-            format=fmt,
-            category_slug=category_slug,
-            category_name=category_name,
-            organization_slug=res_org_slug,
-            organization_name=res_org_name,
-            download_url=download_url,
-            detail_url=detail_url or None,
-        ))
+        resources.append(
+            Resource(
+                resource_id=resource_id,
+                name=name,
+                description=resource_desc,
+                format=fmt,
+                category_slug=category_slug,
+                category_name=category_name,
+                organization_slug=res_org_slug,
+                organization_name=res_org_name,
+                download_url=download_url,
+                detail_url=detail_url or None,
+            )
+        )
 
     return DatasetDetail(
         slug=slug,
