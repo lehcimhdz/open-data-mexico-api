@@ -7,7 +7,7 @@ name = "open-data-mexico"
 version = "0.1.0"
 description = "Unofficial Python client for the Mexican government open data platform (datos.gob.mx)"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 keywords = ["mexico", "open-data", "government", "datos", "scraping"]
 classifiers = [
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -46,9 +47,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/open-data-mexico-api"
-Repository = "https://github.com/open-data-mexico-api"
-"Bug Tracker" = "https://github.com/open-data-mexico-api/issues"
+Homepage = "https://github.com/lehcimhdz/open-data-mexico-api"
+Repository = "https://github.com/lehcimhdz/open-data-mexico-api"
+"Bug Tracker" = "https://github.com/lehcimhdz/open-data-mexico-api/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["open_data_mexico"]
