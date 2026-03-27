@@ -1,0 +1,76 @@
+site_name: open-data-mexico
+site_description: Unofficial Python client for datos.gob.mx
+site_url: https://lehcimhdz.github.io/open-data-mexico-api/
+repo_url: https://github.com/lehcimhdz/open-data-mexico-api
+repo_name: lehcimhdz/open-data-mexico-api
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: es
+  palette:
+    - scheme: default
+      primary: green
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo oscuro
+    - scheme: slate
+      primary: green
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo claro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Inicio: index.md
+  - Categorías:
+      - Índice: categories/index.md
+      - agricultura: categories/agricultura.md
+      - catalogo_datos: categories/catalogo_datos.md
+      - ciencia_tecnologia: categories/ciencia_tecnologia.md
+      - cultura: categories/cultura.md
+      - deporte: categories/deporte.md
+      - derechos_humanos: categories/derechos_humanos.md
+      - economia: categories/economia.md
+      - educacion: categories/educacion.md
+      - energia: categories/energia.md
+      - gobierno: categories/gobierno.md
+      - infraestructura: categories/infraestructura.md
+      - mar_costa: categories/mar_costa.md
+      - medio_ambiente: categories/medio_ambiente.md
+      - migracion: categories/migracion.md
+      - movilidad: categories/movilidad.md
+      - mujeres: categories/mujeres.md
+      - multiculturalidad: categories/multiculturalidad.md
+      - plan_apertura_datos: categories/plan_apertura_datos.md
+      - poblacion: categories/poblacion.md
+      - presupuesto: categories/presupuesto.md
+      - programas_sociales: categories/programas_sociales.md
+      - salud: categories/salud.md
+      - seguridad: categories/seguridad.md
+      - servicios: categories/servicios.md
+      - telecomunicaciones: categories/telecomunicaciones.md
+      - territorio: categories/territorio.md
+      - trabajo: categories/trabajo.md
+      - turismo: categories/turismo.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
