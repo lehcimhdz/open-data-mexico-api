@@ -8,6 +8,8 @@ from open_data_mexico import (
     DatasetDetail,
     DatasetsResponse,
     DatosGobMX,
+    Organization,
+    OrganizationsResponse,
     SearchResponse,
 )
 
@@ -77,6 +79,22 @@ async def get_dataset(slug: str, request: Request):
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Dataset '{slug}' not found")
     return detail
+
+
+@app.get("/organizations", response_model=OrganizationsResponse)
+async def list_organizations(request: Request):
+    """List all government organizations that publish datasets."""
+    orgs = await _get_client(request).get_organizations()
+    return OrganizationsResponse(total=len(orgs), organizations=orgs)
+
+
+@app.get("/organizations/{slug}", response_model=Organization)
+async def get_organization(slug: str, request: Request):
+    """Fetch a single organization by slug."""
+    org = await _get_client(request).get_organization(slug)
+    if org is None:
+        raise HTTPException(status_code=404, detail=f"Organization '{slug}' not found")
+    return org
 
 
 @app.get("/search", response_model=SearchResponse)

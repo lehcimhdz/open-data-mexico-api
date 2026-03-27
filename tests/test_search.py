@@ -1,3 +1,4 @@
+from datetime import UTC
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -42,7 +43,9 @@ def test_parse_package_maps_fields():
     ds = _parse_package(CKAN_PACKAGE)
     assert ds.slug == "rezago_social"
     assert ds.title == "Rezago social"
-    assert ds.last_updated == "2025-06-04T18:44:31.334457"
+    from datetime import datetime
+
+    assert ds.last_updated == datetime(2025, 6, 4, 18, 44, 31, 334457, tzinfo=UTC)
     assert ds.description == "Medida que permite ordenar unidades geográficas."
     assert ds.category_slug == "poblacion"
     assert ds.category_name == "Población"

@@ -1,3 +1,4 @@
+from datetime import UTC
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -41,8 +42,10 @@ async def test_parse_tags(dataset_detail_html):
 
 async def test_parse_timestamps(dataset_detail_html):
     detail = _parse_dataset_detail(dataset_detail_html, "expedientes_clasificados_ceav")
-    assert detail.created == "2026-03-23T16:28:17+0000"
-    assert detail.last_updated == "2026-03-23T16:29:56+0000"
+    from datetime import datetime
+
+    assert detail.created == datetime(2026, 3, 23, 16, 28, 17, tzinfo=UTC)
+    assert detail.last_updated == datetime(2026, 3, 23, 16, 29, 56, tzinfo=UTC)
 
 
 async def test_parse_resource_fields(dataset_detail_html):
@@ -165,8 +168,10 @@ async def test_prs_parse_tags(dataset_detail_prs_html):
 async def test_prs_parse_timestamps(dataset_detail_prs_html):
     slug = "cuaderno_mensual_estadistico_penitenciario_enero_2026"
     detail = _parse_dataset_detail(dataset_detail_prs_html, slug)
-    assert detail.created == "2026-03-09T21:40:15+0000"
-    assert detail.last_updated == "2026-03-10T17:11:45+0000"
+    from datetime import datetime
+
+    assert detail.created == datetime(2026, 3, 9, 21, 40, 15, tzinfo=UTC)
+    assert detail.last_updated == datetime(2026, 3, 10, 17, 11, 45, tzinfo=UTC)
 
 
 async def test_get_resource_data_streams_csv(httpx_mock: HTTPXMock):
@@ -234,5 +239,7 @@ async def test_sesnsp_parse_tags(dataset_detail_sesnsp_html):
 
 async def test_sesnsp_parse_timestamps(dataset_detail_sesnsp_html):
     detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
-    assert detail.created == "2025-03-13T23:27:31+0000"
-    assert detail.last_updated == "2026-03-03T22:09:46+0000"
+    from datetime import datetime
+
+    assert detail.created == datetime(2025, 3, 13, 23, 27, 31, tzinfo=UTC)
+    assert detail.last_updated == datetime(2026, 3, 3, 22, 9, 46, tzinfo=UTC)

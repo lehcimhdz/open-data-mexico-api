@@ -18,6 +18,7 @@ import httpx
 
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
+from open_data_mexico._utils import parse_iso_dt
 from open_data_mexico.models import Dataset
 
 _API_URL = f"{BASE_URL}/api/3/action/package_search"
@@ -32,7 +33,7 @@ def _parse_package(pkg: dict) -> Dataset:
     return Dataset(
         slug=slug,
         title=pkg.get("title") or slug,
-        last_updated=pkg.get("metadata_modified"),
+        last_updated=parse_iso_dt(pkg.get("metadata_modified")),
         description=pkg.get("notes") or None,
         category_slug=groups[0]["name"] if groups else None,
         category_name=groups[0].get("display_name") if groups else None,

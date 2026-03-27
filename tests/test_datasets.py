@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -23,7 +24,9 @@ def test_parse_datasets_page_extracts_fields(datasets_page_1_html):
     first = datasets[0]
     assert first.slug == "incidencia_delictiva"
     assert first.title == "Incidencia delictiva"
-    assert first.last_updated == "3 de marzo 2026"
+    from datetime import datetime
+
+    assert first.last_updated == datetime(2026, 3, 3, tzinfo=UTC)
     assert first.category_slug == "seguridad"
     assert first.organization_slug == "sesnsp"
     assert first.resource_count == 3
@@ -76,7 +79,7 @@ MOCK_DATASETS = [
     Dataset(
         slug="incidencia_delictiva",
         title="Incidencia delictiva",
-        last_updated="3 de marzo 2026",
+        last_updated=datetime(2026, 3, 3, tzinfo=UTC),
         category_slug="seguridad",
         category_name="Seguridad",
         organization_slug="sesnsp",
@@ -87,7 +90,7 @@ MOCK_DATASETS = [
     Dataset(
         slug="bajas_personal",
         title="Bajas de personal",
-        last_updated="12 de febrero 2026",
+        last_updated=datetime(2026, 2, 12, tzinfo=UTC),
         category_slug="seguridad",
         category_name="Seguridad",
         organization_slug="secretaria_marina",

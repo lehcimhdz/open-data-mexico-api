@@ -52,6 +52,8 @@ from open_data_mexico.models import (
     Dataset,
     DatasetDetail,
     DatasetsResponse,
+    Organization,
+    OrganizationsResponse,
     Resource,
     SearchResponse,
 )
@@ -64,6 +66,8 @@ __all__ = [
     "Dataset",
     "DatasetDetail",
     "DatasetsResponse",
+    "Organization",
+    "OrganizationsResponse",
     "Resource",
     "SearchResponse",
 ]

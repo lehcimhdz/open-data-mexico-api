@@ -25,7 +25,14 @@ import httpx
 
 from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._scrapers.categories import fetch_all_categories
-from open_data_mexico.models import Category, Dataset, DatasetDetail, Resource, SearchResponse
+from open_data_mexico.models import (
+    Category,
+    Dataset,
+    DatasetDetail,
+    Organization,
+    Resource,
+    SearchResponse,
+)
 
 
 class DatosGobMX:
@@ -356,3 +363,65 @@ class DatosGobMX:
             offset=offset,
             datasets=datasets,
         )
+
+    async def get_organizations(self) -> list[Organization]:
+        """Fetch all government organizations that publish datasets.
+
+        Uses the CKAN API (``/api/3/action/organization_list``). Results are
+        cached in memory for ``cache_ttl`` seconds.
+
+        Returns:
+            List of :class:`~open_data_mexico.models.Organization` objects
+            sorted alphabetically by slug (184 organizations as of 2026).
+
+        Raises:
+            httpx.HTTPStatusError: On non-2xx API responses.
+            httpx.RequestError: On network failures.
+        """
+        from open_data_mexico._scrapers.organizations import fetch_all_organizations
+
+        cached = self._cache_get("organizations")
+        if cached is not None:
+            return cast(list[Organization], cached)
+
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            result = await fetch_all_organizations(
+                client,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
+        finally:
+            if not self._client:
+                await client.aclose()
+
+        self._cache_set("organizations", result)
+        return result
+
+    async def get_organization(self, slug: str) -> Organization | None:
+        """Fetch a single organization by slug.
+
+        Args:
+            slug: Organization identifier, e.g. ``'coneval'`` or ``'imss'``.
+
+        Returns:
+            An :class:`~open_data_mexico.models.Organization` if found,
+            or ``None`` if the slug does not exist.
+
+        Raises:
+            httpx.HTTPStatusError: On non-404 server errors.
+            httpx.RequestError: On network failures.
+        """
+        from open_data_mexico._scrapers.organizations import fetch_organization
+
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            return await fetch_organization(
+                client,
+                slug,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
+        finally:
+            if not self._client:
+                await client.aclose()

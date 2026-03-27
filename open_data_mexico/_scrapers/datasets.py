@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
+from open_data_mexico._utils import parse_spanish_date
 from open_data_mexico.models import Dataset
 
 
@@ -51,7 +52,7 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
             if strong and "Última Actualización" in strong.get_text():
                 text = p.get_text(separator=" ", strip=True)
                 text = text.replace(strong.get_text(strip=True), "").strip().lstrip(":").strip()
-                last_updated = text or None
+                last_updated = parse_spanish_date(text)
                 break
 
         # description: the p that contains "Ver base de datos" link

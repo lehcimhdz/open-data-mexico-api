@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup
 
 from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
 from open_data_mexico._http import robust_get
+from open_data_mexico._utils import parse_iso_dt
 from open_data_mexico.models import DatasetDetail, Resource
 
 
@@ -116,9 +117,9 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
             continue
         dt = span.get("data-datetime")
         if "ltima actualizaci" in label or "Última" in label:
-            last_updated = dt
+            last_updated = parse_iso_dt(dt)
         elif "Creado" in label:
-            created = dt
+            created = parse_iso_dt(dt)
 
     # resources
     resources = []

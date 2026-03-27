@@ -6,6 +6,8 @@ from the site's public HTML pages and reflect whatever the site
 currently publishes — no transformations beyond basic text cleanup.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -52,10 +54,11 @@ class Dataset(BaseModel):
         "Matches the last path segment of the dataset URL."
     )
     title: str = Field(description="Full display title of the dataset.")
-    last_updated: str | None = Field(
+    last_updated: datetime | None = Field(
         default=None,
-        description="Date of the last update as a Spanish-locale string, "
-        "e.g. '3 de marzo 2026'. Not parsed into a date object.",
+        description="Date of the last update as a UTC datetime. "
+        "Parsed from the Spanish-locale string shown on listing pages "
+        "or from ISO 8601 when sourced from the CKAN API.",
     )
     description: str | None = Field(
         default=None,
@@ -91,6 +94,25 @@ class DatasetsResponse(BaseModel):
     total: int = Field(description="Total number of datasets returned.")
     category_slug: str = Field(description="The category slug that was queried.")
     datasets: list[Dataset] = Field(description="List of dataset objects.")
+
+
+class Organization(BaseModel):
+    """A government institution that publishes datasets on datos.gob.mx."""
+
+    slug: str = Field(description="URL-safe identifier, e.g. 'coneval'.")
+    title: str = Field(description="Full display name of the institution.")
+    description: str | None = Field(default=None, description="Institution description.")
+    dataset_count: int = Field(description="Number of published datasets.")
+    image_url: str | None = Field(default=None, description="Logo URL.")
+    created: datetime | None = Field(default=None, description="Registration datetime (UTC).")
+    url: str = Field(description="Absolute URL to the organization's page.")
+
+
+class OrganizationsResponse(BaseModel):
+    """Wrapper returned by the REST server's GET /organizations endpoint."""
+
+    total: int = Field(description="Total number of organizations returned.")
+    organizations: list[Organization] = Field(description="List of organization objects.")
 
 
 class SearchResponse(BaseModel):
@@ -169,12 +191,13 @@ class DatasetDetail(BaseModel):
     tags: list[str] = Field(
         default_factory=list, description="List of tag strings associated with this dataset."
     )
-    created: str | None = Field(
+    created: datetime | None = Field(
         default=None,
-        description="ISO 8601 creation datetime from data-datetime attr, e.g. '2026-03-23T16:28:17+0000'.",  # noqa: E501
+        description="Creation datetime (UTC) parsed from the data-datetime attribute.",
     )
-    last_updated: str | None = Field(
-        default=None, description="ISO 8601 last-updated datetime from data-datetime attr."
+    last_updated: datetime | None = Field(
+        default=None,
+        description="Last-updated datetime (UTC) parsed from the data-datetime attribute.",
     )
     resources: list[Resource] = Field(
         default_factory=list, description="List of downloadable resource files."

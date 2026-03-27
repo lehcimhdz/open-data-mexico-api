@@ -21,9 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.pre-commit-config.yaml` with ruff and mypy hooks.
 - `pytest-cov` with 80 % minimum coverage enforced.
 - MkDocs site configuration.
+- `client.search(query)` — full-text dataset search via CKAN `package_search` JSON API; supports `category`, `limit`, `offset` parameters; returns `SearchResponse`.
+- `client.get_organizations()` — lists all 184+ publishing institutions via CKAN `organization_list`; returns `list[Organization]`.
+- `client.get_organization(slug)` — fetches a single organization by slug via CKAN `organization_show`; returns `None` on 404.
+- `Organization` and `OrganizationsResponse` Pydantic models.
+- `SearchResponse` Pydantic model.
+- `GET /organizations` and `GET /organizations/{slug}` FastAPI endpoints.
+- `GET /search?q=...` FastAPI endpoint with optional `category`, `limit`, `offset` query params.
+- `open_data_mexico/_utils.py` — `parse_spanish_date()` and `parse_iso_dt()` helpers for robust datetime parsing.
 
 ### Changed
 - `_get_total_pages()` now scans all `<li>` elements in `ul.pagination` instead of only `<a>` tags, making pagination detection more robust against disabled/active page items rendered as `<span>`.
+- `Dataset.last_updated`, `DatasetDetail.created`, and `DatasetDetail.last_updated` changed from `str | None` to `datetime | None`; values are now timezone-aware UTC datetimes.
 - `pyproject.toml`: corrected project URLs to the real GitHub repository.
 - `pyproject.toml`: `license` field now points to the `LICENSE` file.
 - `pyproject.toml`: added Python 3.13 classifier.
