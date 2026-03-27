@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-03-27
+
 ### Added
 - `request_delay` parameter on `DatosGobMX` for configurable rate limiting between requests.
 - `max_retries` parameter on `DatosGobMX` for automatic retry with exponential backoff on 5xx/429 and network errors.
@@ -56,5 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 44 tests with mock HTML fixtures (pytest-asyncio + pytest-httpx).
 - Documentation for all 28 available categories.
 
-[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/lehcimhdz/open-data-mexico-api/releases/tag/v1.0.0
 [0.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/releases/tag/v0.1.0
