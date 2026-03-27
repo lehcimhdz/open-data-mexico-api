@@ -1,3 +1,18 @@
+"""
+Scraper for the per-category dataset listing pages at datos.gob.mx/group/{slug}.
+
+Page structure (20 items per page):
+  ul.dataset-list > li.resource-item   — one element per dataset
+    h3 a.text-black[href]              — title and slug (/dataset/{slug})
+    p > strong "Última Actualización:" — last-updated date string
+    p > a.ms-1 "Ver base de datos"     — description paragraph (link removed)
+    p > strong "Categoría:" > a[href]  — category name and slug
+    a.link-pink[href]                  — organization name and slug
+    p > strong "Número de bases..."    — resource file count
+
+Pagination sits in ul.pagination; URL pattern: /group/{slug}?page={n}.
+"""
+
 import re
 import httpx
 from bs4 import BeautifulSoup
@@ -6,7 +21,14 @@ from open_data_mexico.models import Dataset
 
 
 def _parse_datasets_page(html: str) -> list[Dataset]:
-    """Parse li.resource-item elements from a category datasets page."""
+    """Parse one page of a category's dataset listing.
+
+    Args:
+        html: Raw HTML of a ``/group/{slug}?page={n}`` response.
+
+    Returns:
+        List of Dataset objects found on that page (up to 20).
+    """
     soup = BeautifulSoup(html, "lxml")
     datasets = []
     for item in soup.select("li.resource-item"):
@@ -87,7 +109,14 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
 
 
 def _get_total_pages(html: str) -> int:
-    """Detect total pages from pagination."""
+    """Return the total number of pages by reading the pagination widget.
+
+    Args:
+        html: Raw HTML of any ``/group/{slug}`` page.
+
+    Returns:
+        Maximum page number found in ``ul.pagination``, or 1 if no pagination.
+    """
     soup = BeautifulSoup(html, "lxml")
     pages = []
     for a in soup.select("ul.pagination li.page-item a.page-link"):
@@ -98,7 +127,20 @@ def _get_total_pages(html: str) -> int:
 
 
 async def fetch_category_datasets(client: httpx.AsyncClient, category_slug: str) -> list[Dataset]:
-    """Fetch all datasets for a given category slug."""
+    """Fetch all datasets for a category across all pages.
+
+    Args:
+        client: An active ``httpx.AsyncClient`` with appropriate headers.
+        category_slug: The category URL identifier, e.g. ``"seguridad"``.
+
+    Returns:
+        Combined list of all Dataset objects from every page, in site order
+        (most recently updated first by default).
+
+    Raises:
+        httpx.HTTPStatusError: On non-2xx HTTP responses (404 if the slug
+            does not match any category).
+    """
     resp = await client.get(f"{BASE_URL}/group/{category_slug}")
     resp.raise_for_status()
     total_pages = _get_total_pages(resp.text)

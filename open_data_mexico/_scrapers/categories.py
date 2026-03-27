@@ -1,3 +1,18 @@
+"""
+Scraper for the categories listing pages at datos.gob.mx/group/.
+
+Page structure (one page per 20 items, currently 2 pages total):
+  ul.media-grid > li.media-item   — one element per category
+    img.media-image[alt]          — slug (alt attr) and image URL (src attr)
+    h2.media-heading              — display name
+    p.media-description           — short description
+    span.count                    — dataset count, e.g. "403 Bases de Datos"
+    a.media-view[href]            — link to category page, href = /group/{slug}
+
+Pagination sits in ul.pagination; pages are detected by reading the
+maximum numeric link text.
+"""
+
 import re
 import httpx
 from bs4 import BeautifulSoup
@@ -6,6 +21,14 @@ from open_data_mexico.models import Category
 
 
 async def _parse_categories_page(html: str) -> list[Category]:
+    """Parse one page of the categories listing into a list of Category objects.
+
+    Args:
+        html: Raw HTML of a /group/?page={n} response.
+
+    Returns:
+        List of Category objects found on that page (up to 20).
+    """
     soup = BeautifulSoup(html, "lxml")
     categories = []
 
@@ -73,6 +96,14 @@ async def _parse_categories_page(html: str) -> list[Category]:
 
 
 async def _get_total_pages(html: str) -> int:
+    """Return the total number of pages by reading the pagination widget.
+
+    Args:
+        html: Raw HTML of any /group/ page.
+
+    Returns:
+        Maximum page number found in ul.pagination, or 1 if no pagination.
+    """
     soup = BeautifulSoup(html, "lxml")
     pages = []
     for a in soup.select("ul.pagination li a"):
@@ -83,6 +114,20 @@ async def _get_total_pages(html: str) -> int:
 
 
 async def fetch_all_categories(client: httpx.AsyncClient) -> list[Category]:
+    """Fetch all categories across all pages.
+
+    Fetches page 1 first to detect the total page count, then fetches
+    any remaining pages concurrently (currently sequential, safe for rate limits).
+
+    Args:
+        client: An active ``httpx.AsyncClient`` with appropriate headers.
+
+    Returns:
+        Combined list of all Category objects from every page, in site order.
+
+    Raises:
+        httpx.HTTPStatusError: On non-2xx HTTP responses.
+    """
     # Fetch first page to determine total pages
     resp = await client.get(f"{BASE_URL}/group/?page=1")
     resp.raise_for_status()

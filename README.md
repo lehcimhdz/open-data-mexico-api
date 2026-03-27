@@ -1,10 +1,12 @@
 # open-data-mexico
 
 ![PyPI version](https://img.shields.io/pypi/v/open-data-mexico)
+![Python](https://img.shields.io/pypi/pyversions/open-data-mexico)
+![License](https://img.shields.io/pypi/l/open-data-mexico)
 
-Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform (CKAN).
+Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform, built on CKAN 2.11.
 
-> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages. Use responsibly and respect the site's terms of service. The client may break if the site's HTML structure changes.
+> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages and may break if the site's structure changes. Use responsibly and respect the site's terms of service.
 
 ---
 
@@ -14,6 +16,10 @@ Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the M
 pip install open-data-mexico
 ```
 
+Requires Python 3.11+.
+
+---
+
 ## Quick Start
 
 ```python
@@ -22,115 +28,223 @@ from open_data_mexico import DatosGobMX
 
 async def main():
     async with DatosGobMX() as client:
-        # Fetch all categories
+        # List all 28 categories
         categories = await client.get_categories()
         for cat in categories:
             print(f"{cat.slug}: {cat.name} ({cat.dataset_count} datasets)")
 
-        # Fetch a single category by slug
+        # Get a single category by slug
         salud = await client.get_category("salud")
-        if salud:
-            print(salud.model_dump())
+        print(salud.name, salud.dataset_count)
+
+        # List all datasets in a category (auto-paginates)
+        datasets = await client.get_category_datasets("seguridad")
+        for ds in datasets:
+            print(f"  {ds.title} — {ds.organization_name} ({ds.last_updated})")
 
 asyncio.run(main())
 ```
 
 ---
 
-## Available Methods
+## Client Reference
 
-| Method | Return type | Description |
-|--------|-------------|-------------|
-| `get_categories()` | `list[Category]` | Fetch all categories from datos.gob.mx/group/ |
-| `get_category(slug)` | `Category \| None` | Fetch a single category by slug; returns None if not found |
+### `DatosGobMX(timeout=30.0)`
 
-### Category model fields
+Async context-manager client. A shared HTTP connection is reused across
+all method calls when used as a context manager, which is more efficient
+for multiple consecutive requests.
+
+```python
+# Recommended — reuses one HTTP connection
+async with DatosGobMX() as client:
+    categories = await client.get_categories()
+
+# Also valid — opens a new connection per call
+client = DatosGobMX()
+categories = await client.get_categories()
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `timeout` | `float` | `30.0` | HTTP request timeout in seconds |
+
+### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get_categories()` | `list[Category]` | All 28 categories (auto-paginates) |
+| `get_category(slug)` | `Category \| None` | One category by slug; `None` if not found |
+| `get_category_datasets(category_slug)` | `list[Dataset]` | All datasets in a category (auto-paginates) |
+
+All methods raise `httpx.HTTPStatusError` on non-2xx responses and
+`httpx.RequestError` on network failures (timeout, DNS, etc.).
+
+---
+
+## Data Models
+
+### `Category`
+
+Represents a thematic category grouping datasets.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `slug` | `str` | URL identifier |
-| `name` | `str` | Human-readable name |
-| `description` | `str \| None` | Short description |
-| `dataset_count` | `int` | Number of datasets in the category |
-| `image_url` | `str \| None` | Category image URL |
-| `url` | `str` | Full URL to the category page |
+| `slug` | `str` | URL identifier, e.g. `"seguridad"` |
+| `name` | `str` | Display name, e.g. `"Seguridad"` |
+| `description` | `str \| None` | Short summary shown on the listing page |
+| `dataset_count` | `int` | Number of datasets in this category |
+| `image_url` | `str \| None` | Absolute URL of the category's SVG icon |
+| `url` | `str` | Absolute URL to the category's dataset listing |
+
+### `Dataset`
+
+Represents a single dataset listed under a category page.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `slug` | `str` | URL identifier, e.g. `"incidencia_delictiva"` |
+| `title` | `str` | Full display title |
+| `last_updated` | `str \| None` | Last update as a Spanish-locale string, e.g. `"3 de marzo 2026"` |
+| `description` | `str \| None` | Short description from the listing card (may be truncated) |
+| `category_slug` | `str \| None` | Slug of the parent category |
+| `category_name` | `str \| None` | Display name of the parent category |
+| `organization_slug` | `str \| None` | Slug of the publishing institution |
+| `organization_name` | `str \| None` | Full name of the publishing institution |
+| `resource_count` | `int \| None` | Number of resource files (CSV, etc.) attached |
+| `url` | `str` | Absolute URL to the dataset's detail page |
 
 ---
 
 ## Optional: FastAPI Server
 
-Install the server extra to run a REST API on top of the library:
+Install with the `server` extra to run a REST API on top of the library:
 
 ```bash
 pip install open-data-mexico[server]
 ```
 
-Run the server:
+Start the server:
 
 ```bash
 uvicorn server.app:app --reload
 ```
 
-The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive Swagger documentation.
+The API is available at `http://localhost:8000`. Interactive docs at `/docs` (Swagger UI) and `/redoc`.
 
-### Server endpoints
+### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/` | Root — API info |
-| `GET` | `/categories` | List all dataset categories |
-| `GET` | `/categories/{slug}` | Get a single category by slug |
-| `GET` | `/docs` | Interactive Swagger UI |
-| `GET` | `/redoc` | ReDoc documentation |
+| `GET` | `/` | API info and version |
+| `GET` | `/categories` | All categories → `CategoriesResponse` |
+| `GET` | `/categories/{slug}` | Single category → `Category` (404 if not found) |
+| `GET` | `/categories/{slug}/datasets` | All datasets in a category → `DatasetsResponse` |
+
+Example responses:
+
+```jsonc
+// GET /categories/seguridad
+{
+  "slug": "seguridad",
+  "name": "Seguridad",
+  "description": "Datos a nivel federal y estatal sobre los delitos...",
+  "dataset_count": 403,
+  "image_url": "https://www.datos.gob.mx/uploads/group/...seguridad.svg",
+  "url": "https://www.datos.gob.mx/group/seguridad"
+}
+
+// GET /categories/seguridad/datasets  (abbreviated)
+{
+  "total": 403,
+  "category_slug": "seguridad",
+  "datasets": [
+    {
+      "slug": "incidencia_delictiva",
+      "title": "Incidencia delictiva",
+      "last_updated": "3 de marzo 2026",
+      "description": "Se muestran los hechos delictivos...",
+      "category_slug": "seguridad",
+      "category_name": "Seguridad",
+      "organization_slug": "sesnsp",
+      "organization_name": "Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)",
+      "resource_count": 3,
+      "url": "https://www.datos.gob.mx/dataset/incidencia_delictiva"
+    }
+  ]
+}
+```
 
 ---
 
-## Development Setup
+## Development
 
 ```bash
-pip install open-data-mexico[dev]
+# Clone and install all dev dependencies
+pip install -e ".[dev]"
+
+# Run the full test suite
 pytest
+
+# Verbose output
+pytest -v
+
+# Single file
+pytest tests/test_datasets.py -v
 ```
 
-Or with verbose output:
+### Project layout
 
-```bash
-pytest -v
+```
+open_data_mexico/          # installable library package
+├── __init__.py            # public API surface
+├── _config.py             # BASE_URL and HTTP headers (private)
+├── client.py              # DatosGobMX async client class
+├── models.py              # Pydantic data models
+└── _scrapers/             # HTML scraping internals (private)
+    ├── categories.py      # scraper for /group/ listing pages
+    └── datasets.py        # scraper for /group/{slug} dataset pages
+server/
+└── app.py                 # optional FastAPI REST server
+tests/
+├── conftest.py            # shared mock HTML fixtures
+├── test_categories.py     # 10 tests
+└── test_datasets.py       # 8 tests
 ```
 
 ---
 
 ## Available Categories (28)
 
-The portal currently exposes 28 thematic categories:
+Dataset counts reflect the site as of March 2026 and will change over time.
 
-| Slug | Name |
-|------|------|
-| `agricultura` | Agricultura |
-| `catalogo_datos` | Catalogo de Datos |
-| `ciencia_tecnologia` | Ciencia y Tecnologia |
-| `cultura` | Cultura |
-| `deporte` | Deporte |
-| `derechos_humanos` | Derechos Humanos |
-| `economia` | Economia |
-| `educacion` | Educacion |
-| `energia` | Energia |
-| `gobierno` | Gobierno |
-| `infraestructura` | Infraestructura |
-| `mar_costa` | Mar y Costa |
-| `medio_ambiente` | Medio Ambiente |
-| `migracion` | Migracion |
-| `movilidad` | Movilidad |
-| `mujeres` | Mujeres |
-| `multiculturalidad` | Multiculturalidad |
-| `plan_apertura_datos` | Plan de Apertura de Datos |
-| `poblacion` | Poblacion |
-| `presupuesto` | Presupuesto |
-| `programas_sociales` | Programas Sociales |
-| `salud` | Salud |
-| `seguridad` | Seguridad |
-| `servicios` | Servicios |
-| `telecomunicaciones` | Telecomunicaciones |
-| `territorio` | Territorio |
-| `trabajo` | Trabajo |
-| `turismo` | Turismo |
+| Slug | Name | Datasets |
+|------|------|----------|
+| `agricultura` | Agricultura | 139 |
+| `catalogo_datos` | Catálogo de datos | 5 |
+| `ciencia_tecnologia` | Ciencia y tecnología | 194 |
+| `cultura` | Cultura | 187 |
+| `deporte` | Deporte | 10 |
+| `derechos_humanos` | Derechos humanos | 53 |
+| `economia` | Economía | 284 |
+| `educacion` | Educación | 1420 |
+| `energia` | Energía | 271 |
+| `gobierno` | Gobierno | 135 |
+| `infraestructura` | Infraestructura | 125 |
+| `mar_costa` | Mar y costa | 588 |
+| `medio_ambiente` | Medio ambiente | 205 |
+| `migracion` | Migración | 48 |
+| `movilidad` | Movilidad | 41 |
+| `mujeres` | Mujeres | 23 |
+| `multiculturalidad` | Multiculturalidad | 8 |
+| `plan_apertura_datos` | Plan de Apertura de Datos | 140 |
+| `poblacion` | Población | 138 |
+| `presupuesto` | Presupuesto | 313 |
+| `programas_sociales` | Programas sociales | 153 |
+| `salud` | Salud | 573 |
+| `seguridad` | Seguridad | 403 |
+| `servicios` | Servicios | 189 |
+| `telecomunicaciones` | Telecomunicaciones | 73 |
+| `territorio` | Territorio | 121 |
+| `trabajo` | Trabajo | 239 |
+| `turismo` | Turismo | 5 |
