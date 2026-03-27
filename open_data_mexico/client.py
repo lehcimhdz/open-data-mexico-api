@@ -15,7 +15,7 @@ One-shot usage (opens and closes a connection per call):
 
 import httpx
 from open_data_mexico._config import HEADERS
-from open_data_mexico.models import Category, CategoriesResponse, Dataset
+from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetDetail, Resource
 from open_data_mexico._scrapers.categories import fetch_all_categories
 
 
@@ -122,6 +122,74 @@ class DatosGobMX:
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
             return await fetch_category_datasets(client, category_slug)
+        finally:
+            if not self._client:
+                await client.aclose()
+
+    async def get_dataset(self, slug: str) -> DatasetDetail | None:
+        """Fetch the full detail page for a dataset.
+
+        Args:
+            slug: Dataset URL identifier, e.g. 'expedientes_clasificados_ceav'.
+
+        Returns:
+            A DatasetDetail with all resources, tags, timestamps, etc.
+            Returns None if the dataset does not exist (404).
+
+        Raises:
+            httpx.HTTPStatusError: On non-404 server errors.
+            httpx.RequestError: On network failures.
+        """
+        from open_data_mexico._scrapers.dataset_detail import fetch_dataset_detail
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            return await fetch_dataset_detail(client, slug)
+        finally:
+            if not self._client:
+                await client.aclose()
+
+    async def get_resource_data(self, resource: Resource) -> str:
+        """Download a resource file into memory as a string — no disk writes.
+
+        Streams the raw file content (typically CSV) over HTTP and returns it
+        as a Python string. The data is never written to disk.
+
+        Use ``io.StringIO`` to parse the result with pandas or the csv module:
+
+            import io, pandas as pd
+            data = await client.get_resource_data(resource)
+            df = pd.read_csv(io.StringIO(data))
+
+        Or with the built-in csv module (no extra dependencies):
+
+            import io, csv
+            reader = csv.DictReader(io.StringIO(data))
+            rows = list(reader)
+
+        Args:
+            resource: A Resource object with a non-None download_url.
+
+        Returns:
+            The raw file content as a UTF-8 string (falls back to latin-1
+            if UTF-8 decoding fails, which is common with Mexican government
+            CSV files).
+
+        Raises:
+            ValueError: If resource.download_url is None.
+            httpx.HTTPStatusError: On non-2xx HTTP responses.
+            httpx.RequestError: On network failures.
+        """
+        if not resource.download_url:
+            raise ValueError(f"Resource '{resource.name}' has no download_url.")
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            resp = await client.get(resource.download_url)
+            resp.raise_for_status()
+            # Many Mexican gov CSV files use latin-1 encoding
+            try:
+                return resp.content.decode("utf-8")
+            except UnicodeDecodeError:
+                return resp.content.decode("latin-1")
         finally:
             if not self._client:
                 await client.aclose()

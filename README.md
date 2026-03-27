@@ -76,6 +76,8 @@ categories = await client.get_categories()
 | `get_categories()` | `list[Category]` | All 28 categories (auto-paginates) |
 | `get_category(slug)` | `Category \| None` | One category by slug; `None` if not found |
 | `get_category_datasets(category_slug)` | `list[Dataset]` | All datasets in a category (auto-paginates) |
+| `get_dataset(slug)` | `DatasetDetail \| None` | Full dataset detail page including resources |
+| `get_resource_data(resource)` | `str` | CSV content in-memory, no disk writes |
 
 All methods raise `httpx.HTTPStatusError` on non-2xx responses and
 `httpx.RequestError` on network failures (timeout, DNS, etc.).
@@ -114,6 +116,109 @@ Represents a single dataset listed under a category page.
 | `resource_count` | `int \| None` | Number of resource files (CSV, etc.) attached |
 | `url` | `str` | Absolute URL to the dataset's detail page |
 
+### `Resource`
+
+Represents a single downloadable resource file attached to a dataset.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `resource_id` | `str` | UUID of the resource, from the `li[data-id]` attribute |
+| `name` | `str` | Display name of the resource file |
+| `description` | `str \| None` | Short description of this resource file's contents |
+| `format` | `str \| None` | File format in lowercase, e.g. `"csv"`, `"xlsx"` |
+| `category_slug` | `str \| None` | Slug of the category this resource belongs to |
+| `category_name` | `str \| None` | Display name of the category |
+| `organization_slug` | `str \| None` | Slug of the publishing institution |
+| `organization_name` | `str \| None` | Full name of the publishing institution |
+| `download_url` | `str \| None` | Direct URL to download the raw file |
+| `detail_url` | `str \| None` | Absolute URL to the resource's detail page on datos.gob.mx |
+
+### `DatasetDetail`
+
+Full detail of a dataset page at `datos.gob.mx/dataset/{slug}`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `slug` | `str` | URL identifier of the dataset |
+| `title` | `str` | Full display title |
+| `description` | `str \| None` | Full description of what the dataset contains |
+| `organization_slug` | `str \| None` | Slug of the publishing institution |
+| `organization_name` | `str \| None` | Full name of the publishing institution |
+| `license_name` | `str \| None` | License display name, e.g. `"Creative Commons Attribution 4.0"` |
+| `license_url` | `str \| None` | URL to the license text |
+| `tags` | `list[str]` | List of tag strings associated with this dataset |
+| `created` | `str \| None` | ISO 8601 creation datetime, e.g. `"2026-03-23T16:28:17+0000"` |
+| `last_updated` | `str \| None` | ISO 8601 last-updated datetime |
+| `resources` | `list[Resource]` | List of downloadable resource files |
+| `url` | `str` | Absolute URL to this dataset's page |
+
+---
+
+## Working with Dataset Data
+
+### Fetching dataset details
+
+```python
+async with DatosGobMX() as client:
+    detail = await client.get_dataset("expedientes_clasificados_ceav")
+    print(detail.title)           # "Expedientes Clasificados CEAV"
+    print(detail.organization_name)  # "Comisión Ejecutiva de Atención a Víctimas (CEAV)"
+    print(detail.license_name)    # "Creative Commons Attribution 4.0"
+    print(detail.tags)            # ["transparencia", "expediente", ...]
+
+    for resource in detail.resources:
+        print(resource.name, resource.format, resource.download_url)
+```
+
+### Loading CSV data into memory (no disk writes)
+
+`get_resource_data()` downloads the CSV file and returns it as a Python string.
+The data **never touches disk** — it lives entirely in memory.
+
+**With pandas:**
+```python
+import io
+import pandas as pd
+
+async with DatosGobMX() as client:
+    detail = await client.get_dataset("expedientes_clasificados_ceav")
+    resource = detail.resources[0]
+
+    csv_str = await client.get_resource_data(resource)
+    df = pd.read_csv(io.StringIO(csv_str))
+    print(df.head())
+    print(df.dtypes)
+```
+
+Install pandas: `pip install open-data-mexico[pandas]`
+
+**With the built-in `csv` module (no extra dependencies):**
+```python
+import io
+import csv
+
+async with DatosGobMX() as client:
+    detail = await client.get_dataset("expedientes_clasificados_ceav")
+    resource = detail.resources[0]
+
+    csv_str = await client.get_resource_data(resource)
+    reader = csv.DictReader(io.StringIO(csv_str))
+    rows = list(reader)
+    print(rows[0])  # {'col1': 'val1', ...}
+```
+
+**As JSON-serializable dicts:**
+```python
+import io, csv, json
+
+csv_str = await client.get_resource_data(resource)
+rows = list(csv.DictReader(io.StringIO(csv_str)))
+print(json.dumps(rows[:3], ensure_ascii=False, indent=2))
+```
+
+> **Note on encoding:** Mexican government CSV files sometimes use latin-1 encoding.
+> `get_resource_data()` automatically falls back to latin-1 if UTF-8 decoding fails.
+
 ---
 
 ## Optional: FastAPI Server
@@ -140,6 +245,7 @@ The API is available at `http://localhost:8000`. Interactive docs at `/docs` (Sw
 | `GET` | `/categories` | All categories → `CategoriesResponse` |
 | `GET` | `/categories/{slug}` | Single category → `Category` (404 if not found) |
 | `GET` | `/categories/{slug}/datasets` | All datasets in a category → `DatasetsResponse` |
+| `GET` | `/datasets/{slug}` | Full dataset detail → `DatasetDetail` |
 
 Example responses:
 
@@ -203,13 +309,15 @@ open_data_mexico/          # installable library package
 ├── models.py              # Pydantic data models
 └── _scrapers/             # HTML scraping internals (private)
     ├── categories.py      # scraper for /group/ listing pages
-    └── datasets.py        # scraper for /group/{slug} dataset pages
+    ├── datasets.py        # scraper for /group/{slug} dataset pages
+    └── dataset_detail.py  # scraper for /dataset/{slug} detail pages
 server/
 └── app.py                 # optional FastAPI REST server
 tests/
 ├── conftest.py            # shared mock HTML fixtures
 ├── test_categories.py     # 10 tests
-└── test_datasets.py       # 8 tests
+├── test_datasets.py       # 8 tests
+└── test_dataset_detail.py # 11 tests
 ```
 
 ---

@@ -22,6 +22,12 @@ Public API surface
 :class:`DatasetsResponse`
     REST-server wrapper around a list of datasets.
 
+:class:`Resource`
+    A single downloadable resource file attached to a dataset.
+
+:class:`DatasetDetail`
+    Full detail of a dataset page including all resources and metadata.
+
 Quick start::
 
     import asyncio
@@ -31,11 +37,20 @@ Quick start::
         async with DatosGobMX() as client:
             categories = await client.get_categories()
             datasets   = await client.get_category_datasets("seguridad")
+            detail     = await client.get_dataset("expedientes_clasificados_ceav")
 
     asyncio.run(main())
 """
 from open_data_mexico.client import DatosGobMX
-from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetsResponse
+from open_data_mexico.models import Category, CategoriesResponse, Dataset, DatasetsResponse, Resource, DatasetDetail
 
 __version__ = "0.1.0"
-__all__ = ["DatosGobMX", "Category", "CategoriesResponse", "Dataset", "DatasetsResponse"]
+__all__ = [
+    "DatosGobMX",
+    "Category",
+    "CategoriesResponse",
+    "Dataset",
+    "DatasetsResponse",
+    "Resource",
+    "DatasetDetail",
+]

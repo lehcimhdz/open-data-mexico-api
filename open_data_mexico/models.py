@@ -92,3 +92,50 @@ class DatasetsResponse(BaseModel):
     total: int = Field(description="Total number of datasets returned.")
     category_slug: str = Field(description="The category slug that was queried.")
     datasets: list[Dataset] = Field(description="List of dataset objects.")
+
+
+class Resource(BaseModel):
+    """A single downloadable resource file attached to a dataset.
+
+    Each resource is a concrete file (CSV, XLSX, etc.) published as part
+    of a dataset. The ``download_url`` points directly to the file and can
+    be streamed in-memory without writing to disk.
+    """
+
+    resource_id: str = Field(description="UUID of the resource, from the li[data-id] attribute.")
+    name: str = Field(description="Display name of the resource file.")
+    description: Optional[str] = Field(default=None, description="Short description of this resource file's contents.")
+    format: Optional[str] = Field(default=None, description="File format in lowercase, e.g. 'csv', 'xlsx'.")
+    category_slug: Optional[str] = Field(default=None, description="Slug of the category this resource belongs to.")
+    category_name: Optional[str] = Field(default=None, description="Display name of the category.")
+    organization_slug: Optional[str] = Field(default=None, description="Slug of the publishing institution.")
+    organization_name: Optional[str] = Field(default=None, description="Full name of the publishing institution.")
+    download_url: Optional[str] = Field(
+        default=None,
+        description="Direct URL to download the raw file (e.g. a CSV on repodatos.atdt.gob.mx). "
+                    "Use client.get_resource_data() to stream this into memory without saving to disk."
+    )
+    detail_url: Optional[str] = Field(default=None, description="Absolute URL to the resource's detail page on datos.gob.mx.")
+
+
+class DatasetDetail(BaseModel):
+    """Full detail of a dataset page at datos.gob.mx/dataset/{slug}.
+
+    A dataset groups one or more Resource files published by a government
+    institution. Use client.get_resource_data(resource) to load any CSV
+    resource directly into memory as a string, then parse with pandas or
+    the csv module.
+    """
+
+    slug: str = Field(description="URL identifier of the dataset.")
+    title: str = Field(description="Full display title.")
+    description: Optional[str] = Field(default=None, description="Full description of what the dataset contains.")
+    organization_slug: Optional[str] = Field(default=None, description="Slug of the publishing institution.")
+    organization_name: Optional[str] = Field(default=None, description="Full name of the publishing institution.")
+    license_name: Optional[str] = Field(default=None, description="License display name, e.g. 'Creative Commons Attribution 4.0'.")
+    license_url: Optional[str] = Field(default=None, description="URL to the license text.")
+    tags: list[str] = Field(default_factory=list, description="List of tag strings associated with this dataset.")
+    created: Optional[str] = Field(default=None, description="ISO 8601 creation datetime from data-datetime attr, e.g. '2026-03-23T16:28:17+0000'.")
+    last_updated: Optional[str] = Field(default=None, description="ISO 8601 last-updated datetime from data-datetime attr.")
+    resources: list[Resource] = Field(default_factory=list, description="List of downloadable resource files.")
+    url: str = Field(description="Absolute URL to this dataset's page.")

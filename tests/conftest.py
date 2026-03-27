@@ -1,6 +1,4 @@
 import pytest
-
-
 @pytest.fixture
 def datasets_page_1_html() -> str:
     return """<!DOCTYPE html>
@@ -144,3 +142,83 @@ def categories_page_2_html() -> str:
 </body>
 </html>
 """
+
+
+@pytest.fixture
+def dataset_detail_html() -> str:
+    return """<!DOCTYPE html>
+<html>
+<body>
+<div class="jumbotron jumbotron-fluid">
+  <div class="d-flex flex-column justify-content-center align-items-center text-white h-100">
+    <h1 class="text-center jumbotron-title font-weight-bolder">Expedientes Clasificados CEAV</h1>
+  </div>
+</div>
+<div class="main">
+  <div id="content" class="container">
+    <section id="organization-info" class="module module-narrow">
+      <div class="module-content">
+        <a href="/organization/ceav">
+          <img class="item-image" src="https://www.datos.gob.mx/uploads/group/LogoCEAV.png" alt="ceav">
+        </a>
+        <h1 class="heading text-gold">Comisión Ejecutiva de Atención a Víctimas (CEAV)</h1>
+        <p class="description">La CEAV tiene como misión acompañar a las víctimas.</p>
+      </div>
+    </section>
+    <section class="license">
+      <a href="https://creativecommons.org/licenses/by/4.0/" rel="dc:rights">Creative Commons Attribution 4.0</a>
+    </section>
+    <div class="notes embedded-content">
+      <p>Expedientes que han sido clasificados como reservados por el Comité de Transparencia de la CEAV.</p>
+    </div>
+    <ul class="resource-list">
+      <li class="resource-item card card-custom border-card mb-3" data-id="c4b5b5e1-86df-482e-aa5e-466bef5e777f">
+        <div class="row g-0">
+          <div class="col p-3">
+            <h3 class="mb-2">
+              <a class="text-black" href="/dataset/expedientes_clasificados_ceav/resource/c4b5b5e1-86df-482e-aa5e-466bef5e777f" title="Índice de Expedientes Clasificados como Reservados">
+                Índice de Expedientes Clasificados como Reservados
+              </a>
+            </h3>
+            <p class="mb-2">Base de datos con el numero de expedientes clasificados como reservados.</p>
+            <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+            <p class="mb-2"><strong>Formatos:</strong>
+              <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+            </p>
+            <p class="mb-0"><strong>Institución:</strong>
+              <a class="link-pink" href="/organization/ceav">Comisión Ejecutiva de Atención a Víctimas (CEAV)</a>
+            </p>
+            <div class="mt-4">
+              <a href="/dataset/expedientes_clasificados_ceav/resource/c4b5b5e1-86df-482e-aa5e-466bef5e777f" class="btn btn-primary">Consultar</a>
+              <a href="https://repodatos.atdt.gob.mx/api_update/ceav/expedientes_clasificados_ceav/Expedientes_clasificados_CEAV.csv" class="btn btn-outline-primary">Descargar</a>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+    <ul class="tag-list">
+      <li><a class="tag" href="/dataset/?tags=transparencia" title="transparencia">transparencia</a></li>
+      <li><a class="tag" href="/dataset/?tags=expediente" title="expediente">expediente</a></li>
+    </ul>
+    <section class="additional-info">
+      <table class="table">
+        <tbody>
+          <tr>
+            <th>Administrador</th>
+            <td>Comisión Ejecutiva de Atención a Víctimas (CEAV)</td>
+          </tr>
+          <tr>
+            <th>Última actualización</th>
+            <td><span class="automatic-local-datetime" data-datetime="2026-03-23T16:29:56+0000">23 de marzo de 2026</span></td>
+          </tr>
+          <tr>
+            <th>Creado</th>
+            <td><span class="automatic-local-datetime" data-datetime="2026-03-23T16:28:17+0000">23 de marzo de 2026</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+</body>
+</html>"""
