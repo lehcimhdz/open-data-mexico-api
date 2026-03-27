@@ -3,10 +3,12 @@
 ![PyPI version](https://img.shields.io/pypi/v/open-data-mexico)
 ![Python](https://img.shields.io/pypi/pyversions/open-data-mexico)
 ![License](https://img.shields.io/pypi/l/open-data-mexico)
+![CI](https://github.com/lehcimhdz/open-data-mexico-api/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
 
-Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform, built on CKAN 2.11.
+Unofficial async Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform, built on CKAN 2.11. Browse 28 thematic categories, search across 5 000+ datasets, fetch metadata, and download CSV data directly into memory.
 
-> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages and may break if the site's structure changes. Use responsibly and respect the site's terms of service.
+> **Disclaimer:** This is an unofficial project with no affiliation with the Mexican government or CKAN. It scrapes public HTML pages and calls the public CKAN JSON API; it may break if the site's structure changes. Use responsibly and respect the site's terms of service.
 
 ---
 
@@ -16,7 +18,20 @@ Unofficial Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the M
 pip install open-data-mexico
 ```
 
-Requires Python 3.11+.
+Requires **Python 3.11+**. No API key needed.
+
+### Optional extras
+
+```bash
+# Include pandas for loading CSVs into DataFrames
+pip install "open-data-mexico[pandas]"
+
+# Include the optional FastAPI REST server
+pip install "open-data-mexico[server]"
+
+# Both
+pip install "open-data-mexico[pandas,server]"
+```
 
 ---
 
@@ -28,22 +43,36 @@ from open_data_mexico import DatosGobMX
 
 async def main():
     async with DatosGobMX() as client:
-        # List all 28 categories
-        categories = await client.get_categories()
-        for cat in categories:
-            print(f"{cat.slug}: {cat.name} ({cat.dataset_count} datasets)")
 
-        # Get a single category by slug
-        salud = await client.get_category("salud")
-        print(salud.name, salud.dataset_count)
+        # Search datasets by keyword
+        results = await client.search("incidencia delictiva")
+        print(f"{results.total} datasets found")
+        for ds in results.datasets:
+            print(f"  {ds.title} — {ds.organization_name}")
 
-        # List all datasets in a category (auto-paginates)
+        # Browse a category
         datasets = await client.get_category_datasets("seguridad")
-        for ds in datasets:
-            print(f"  {ds.title} — {ds.organization_name} ({ds.last_updated})")
+        print(f"\n{len(datasets)} datasets in 'seguridad'")
+
+        # Get full detail + resources for a dataset
+        detail = await client.get_dataset("incidencia_delictiva")
+        print(f"\n{detail.title}")
+        for r in detail.resources:
+            print(f"  [{r.format}] {r.name}")
 
 asyncio.run(main())
 ```
+
+---
+
+## Package name vs. import name
+
+| Context | Value |
+|---------|-------|
+| **Install from PyPI** | `pip install open-data-mexico` |
+| **Import in Python** | `from open_data_mexico import DatosGobMX` |
+
+The package uses a hyphen (`open-data-mexico`) on PyPI; the Python module uses an underscore (`open_data_mexico`) as required by Python's import system.
 
 ---
 
@@ -51,238 +80,345 @@ asyncio.run(main())
 
 ### `DatosGobMX(...)`
 
-Async context-manager client. A shared HTTP connection is reused across
-all method calls when used as a context manager, which is more efficient
-for multiple consecutive requests.
+Async context manager. One persistent `httpx.AsyncClient` is reused across all calls when entering the context, which gives you connection-pool reuse and a shared in-memory cache.
 
 ```python
-# Recommended — reuses one HTTP connection
+# Recommended — single connection, shared cache
 async with DatosGobMX() as client:
     categories = await client.get_categories()
 
-# Also valid — opens a new connection per call
+# Also valid — opens a new connection for each call
 client = DatosGobMX()
 categories = await client.get_categories()
 
-# With rate limiting (0.5s between requests)
+# With polite rate limiting (0.5 s between requests)
 async with DatosGobMX(request_delay=0.5) as client:
     datasets = await client.get_category_datasets("educacion")
 ```
 
+**Constructor parameters:**
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `timeout` | `float` | `30.0` | HTTP request timeout in seconds |
-| `request_delay` | `float` | `0.0` | Seconds to wait between requests (rate limiting) |
-| `max_retries` | `int` | `3` | Retry attempts on 5xx/429 or network errors |
-| `cache_ttl` | `float` | `300.0` | Seconds to cache responses in memory (0 = disabled) |
+| `request_delay` | `float` | `0.0` | Seconds to sleep between requests (polite rate limiting) |
+| `max_retries` | `int` | `3` | Retry attempts on 5xx / 429 or transient network errors (exponential backoff: 2 s, 4 s, 8 s) |
+| `cache_ttl` | `float` | `300.0` | Seconds to cache responses in memory; `0` disables caching |
 
 ### Methods
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_categories()` | `list[Category]` | All 28 categories (auto-paginates) |
-| `get_category(slug)` | `Category \| None` | One category by slug; `None` if not found |
-| `get_category_datasets(category_slug)` | `list[Dataset]` | All datasets in a category (auto-paginates) |
-| `get_dataset(slug)` | `DatasetDetail \| None` | Full dataset detail page including resources |
-| `get_resource_data(resource)` | `str` | CSV content in-memory, no disk writes |
+| `get_categories()` | `list[Category]` | All 28 thematic categories (auto-paginates) |
+| `get_category(slug)` | `Category \| None` | Single category by slug; `None` if not found |
+| `get_category_datasets(slug)` | `list[Dataset]` | All datasets in a category (auto-paginates all pages) |
+| `get_dataset(slug)` | `DatasetDetail \| None` | Full dataset detail including all resources; `None` if not found |
+| `get_resource_data(resource)` | `str` | Download raw file content (CSV) into a string — no disk writes |
+| `search(query, *, category, limit, offset)` | `SearchResponse` | Full-text search across all datasets via CKAN API |
+| `get_organizations()` | `list[Organization]` | All 184+ publishing institutions (auto-paginates) |
+| `get_organization(slug)` | `Organization \| None` | Single organization by slug; `None` if not found |
 
-All methods raise `httpx.HTTPStatusError` on non-2xx responses and
-`httpx.RequestError` on network failures (timeout, DNS, etc.).
+All methods raise `httpx.HTTPStatusError` on unrecoverable HTTP errors and `httpx.RequestError` on network failures (timeout, DNS, etc.). Transient 5xx / 429 errors are retried automatically up to `max_retries` times.
 
 ---
 
 ## Data Models
 
+All models are [Pydantic v2](https://docs.pydantic.dev/latest/) — they serialize cleanly to/from JSON with `.model_dump()` and `.model_dump_json()`.
+
 ### `Category`
 
-Represents a thematic category grouping datasets.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `slug` | `str` | URL identifier, e.g. `"seguridad"` |
-| `name` | `str` | Display name, e.g. `"Seguridad"` |
-| `description` | `str \| None` | Short summary shown on the listing page |
-| `dataset_count` | `int` | Number of datasets in this category |
-| `image_url` | `str \| None` | Absolute URL of the category's SVG icon |
-| `url` | `str` | Absolute URL to the category's dataset listing |
+| Field | Type | Example |
+|-------|------|---------|
+| `slug` | `str` | `"seguridad"` |
+| `name` | `str` | `"Seguridad"` |
+| `description` | `str \| None` | `"Datos sobre criminalidad..."` |
+| `dataset_count` | `int` | `403` |
+| `image_url` | `str \| None` | `"https://www.datos.gob.mx/uploads/group/seguridad.svg"` |
+| `url` | `str` | `"https://www.datos.gob.mx/group/seguridad"` |
 
 ### `Dataset`
 
-Represents a single dataset listed under a category page.
+Returned by `get_category_datasets()` and `search()`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `slug` | `str` | URL identifier, e.g. `"incidencia_delictiva"` |
-| `title` | `str` | Full display title |
-| `last_updated` | `str \| None` | Last update as a Spanish-locale string, e.g. `"3 de marzo 2026"` |
-| `description` | `str \| None` | Short description from the listing card (may be truncated) |
-| `category_slug` | `str \| None` | Slug of the parent category |
-| `category_name` | `str \| None` | Display name of the parent category |
-| `organization_slug` | `str \| None` | Slug of the publishing institution |
-| `organization_name` | `str \| None` | Full name of the publishing institution |
-| `resource_count` | `int \| None` | Number of resource files (CSV, etc.) attached |
-| `url` | `str` | Absolute URL to the dataset's detail page |
-
-### `Resource`
-
-Represents a single downloadable resource file attached to a dataset.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `resource_id` | `str` | UUID of the resource, from the `li[data-id]` attribute |
-| `name` | `str` | Display name of the resource file |
-| `description` | `str \| None` | Short description of this resource file's contents |
-| `format` | `str \| None` | File format in lowercase, e.g. `"csv"`, `"xlsx"` |
-| `category_slug` | `str \| None` | Slug of the category this resource belongs to |
-| `category_name` | `str \| None` | Display name of the category |
-| `organization_slug` | `str \| None` | Slug of the publishing institution |
-| `organization_name` | `str \| None` | Full name of the publishing institution |
-| `download_url` | `str \| None` | Direct URL to download the raw file |
-| `detail_url` | `str \| None` | Absolute URL to the resource's detail page on datos.gob.mx |
+| Field | Type | Example |
+|-------|------|---------|
+| `slug` | `str` | `"incidencia_delictiva"` |
+| `title` | `str` | `"Incidencia delictiva"` |
+| `last_updated` | `datetime \| None` | `datetime(2026, 3, 3, tzinfo=UTC)` |
+| `description` | `str \| None` | Short card excerpt (may be truncated) |
+| `category_slug` | `str \| None` | `"seguridad"` |
+| `category_name` | `str \| None` | `"Seguridad"` |
+| `organization_slug` | `str \| None` | `"sesnsp"` |
+| `organization_name` | `str \| None` | `"Secretariado Ejecutivo del SNSP (SESNSP)"` |
+| `resource_count` | `int \| None` | `3` |
+| `url` | `str` | `"https://www.datos.gob.mx/dataset/incidencia_delictiva"` |
 
 ### `DatasetDetail`
 
-Full detail of a dataset page at `datos.gob.mx/dataset/{slug}`.
+Returned by `get_dataset()`. Extends `Dataset` with full metadata and resources.
+
+| Field | Type | Example |
+|-------|------|---------|
+| `slug` | `str` | `"incidencia_delictiva"` |
+| `title` | `str` | `"Incidencia delictiva"` |
+| `description` | `str \| None` | Full description of the dataset |
+| `organization_slug` | `str \| None` | `"sesnsp"` |
+| `organization_name` | `str \| None` | Full institution name |
+| `license_name` | `str \| None` | `"Creative Commons Attribution 4.0"` |
+| `license_url` | `str \| None` | `"https://creativecommons.org/licenses/by/4.0/"` |
+| `tags` | `list[str]` | `["Feminicidio", "Homicidio doloso", ...]` |
+| `created` | `datetime \| None` | `datetime(2025, 3, 13, 23, 27, 31, tzinfo=UTC)` |
+| `last_updated` | `datetime \| None` | `datetime(2026, 3, 3, 22, 9, 46, tzinfo=UTC)` |
+| `resources` | `list[Resource]` | Downloadable files attached to this dataset |
+| `url` | `str` | `"https://www.datos.gob.mx/dataset/incidencia_delictiva"` |
+
+### `Resource`
+
+| Field | Type | Example |
+|-------|------|---------|
+| `resource_id` | `str` | `"d9b2792a-33a2-4ea8-8527-210d9e99de5e"` |
+| `name` | `str` | `"Incidencia Delictiva Nacional Estatal"` |
+| `description` | `str \| None` | Description of this file's contents |
+| `format` | `str \| None` | `"csv"` |
+| `category_slug` | `str \| None` | `"seguridad"` |
+| `category_name` | `str \| None` | `"Seguridad"` |
+| `organization_slug` | `str \| None` | `"sesnsp"` |
+| `organization_name` | `str \| None` | Full institution name |
+| `download_url` | `str \| None` | Direct URL to the raw file |
+| `detail_url` | `str \| None` | URL to the resource's detail page |
+
+### `Organization`
+
+Returned by `get_organizations()` and `get_organization()`.
+
+| Field | Type | Example |
+|-------|------|---------|
+| `slug` | `str` | `"coneval"` |
+| `title` | `str` | `"Consejo Nacional de Evaluación... (CONEVAL)"` |
+| `description` | `str \| None` | Short description of the institution |
+| `dataset_count` | `int` | `2` |
+| `image_url` | `str \| None` | Logo URL |
+| `created` | `datetime \| None` | `datetime(2015, 3, 1, tzinfo=UTC)` |
+| `url` | `str` | `"https://www.datos.gob.mx/organization/coneval"` |
+
+### `SearchResponse`
+
+Returned by `search()`.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `slug` | `str` | URL identifier of the dataset |
-| `title` | `str` | Full display title |
-| `description` | `str \| None` | Full description of what the dataset contains |
-| `organization_slug` | `str \| None` | Slug of the publishing institution |
-| `organization_name` | `str \| None` | Full name of the publishing institution |
-| `license_name` | `str \| None` | License display name, e.g. `"Creative Commons Attribution 4.0"` |
-| `license_url` | `str \| None` | URL to the license text |
-| `tags` | `list[str]` | List of tag strings associated with this dataset |
-| `created` | `str \| None` | ISO 8601 creation datetime, e.g. `"2026-03-23T16:28:17+0000"` |
-| `last_updated` | `str \| None` | ISO 8601 last-updated datetime |
-| `resources` | `list[Resource]` | List of downloadable resource files |
-| `url` | `str` | Absolute URL to this dataset's page |
+| `total` | `int` | Total matching datasets (may exceed `len(datasets)` if paginated) |
+| `query` | `str` | The search term used |
+| `category` | `str \| None` | Category filter applied, if any |
+| `offset` | `int` | Number of results skipped |
+| `datasets` | `list[Dataset]` | Results for this page |
 
 ---
 
-## Working with Dataset Data
+## Usage Examples
 
-### Fetching dataset details
+### Search datasets by keyword
 
 ```python
-async with DatosGobMX() as client:
-    detail = await client.get_dataset("expedientes_clasificados_ceav")
-    print(detail.title)           # "Expedientes Clasificados CEAV"
-    print(detail.organization_name)  # "Comisión Ejecutiva de Atención a Víctimas (CEAV)"
-    print(detail.license_name)    # "Creative Commons Attribution 4.0"
-    print(detail.tags)            # ["transparencia", "expediente", ...]
+import asyncio
+from open_data_mexico import DatosGobMX
 
-    for resource in detail.resources:
-        print(resource.name, resource.format, resource.download_url)
+async def main():
+    async with DatosGobMX() as client:
+        # Basic search
+        results = await client.search("rezago social")
+        print(f"{results.total} results for '{results.query}'")
+        for ds in results.datasets:
+            print(f"  {ds.slug}: {ds.title}")
+
+        # Search within a category with pagination
+        page2 = await client.search("educacion", category="educacion", limit=10, offset=10)
+        print(f"\nPage 2 — showing {len(page2.datasets)} of {page2.total}")
+
+asyncio.run(main())
 ```
 
-### Loading CSV data into memory (no disk writes)
+### Browse a category and filter results
 
-`get_resource_data()` downloads the CSV file and returns it as a Python string.
-The data **never touches disk** — it lives entirely in memory.
-
-**With pandas:**
 ```python
+import asyncio
+from open_data_mexico import DatosGobMX
+
+async def main():
+    async with DatosGobMX() as client:
+        datasets = await client.get_category_datasets("seguridad")
+
+        # Filter by institution
+        sesnsp = [ds for ds in datasets if ds.organization_slug == "sesnsp"]
+        print(f"SESNSP datasets: {len(sesnsp)}")
+
+        # Most recently updated
+        for ds in datasets[:5]:
+            print(f"{ds.last_updated:%Y-%m-%d}  {ds.title}")
+
+asyncio.run(main())
+```
+
+### Get full dataset detail and resources
+
+```python
+import asyncio
+from open_data_mexico import DatosGobMX
+
+async def main():
+    async with DatosGobMX() as client:
+        detail = await client.get_dataset("incidencia_delictiva")
+        if detail is None:
+            print("Not found")
+            return
+
+        print(detail.title)
+        print(f"License: {detail.license_name}")
+        print(f"Tags: {', '.join(detail.tags)}")
+        print(f"Updated: {detail.last_updated:%Y-%m-%d}")
+
+        for r in detail.resources:
+            print(f"  [{r.format}] {r.name}")
+            print(f"    {r.download_url}")
+
+asyncio.run(main())
+```
+
+### Load CSV data into pandas (no disk writes)
+
+```python
+import asyncio
 import io
 import pandas as pd
+from open_data_mexico import DatosGobMX
 
-async with DatosGobMX() as client:
-    detail = await client.get_dataset("expedientes_clasificados_ceav")
-    resource = detail.resources[0]
+async def main():
+    async with DatosGobMX() as client:
+        detail = await client.get_dataset("incidencia_delictiva")
+        resource = detail.resources[0]
 
-    csv_str = await client.get_resource_data(resource)
-    df = pd.read_csv(io.StringIO(csv_str))
-    print(df.head())
-    print(df.dtypes)
+        csv_str = await client.get_resource_data(resource)
+        df = pd.read_csv(io.StringIO(csv_str))
+        print(df.shape)
+        print(df.head())
+
+asyncio.run(main())
 ```
 
-Install pandas: `pip install open-data-mexico[pandas]`
+> **Encoding note:** Some government CSV files use Latin-1 encoding. `get_resource_data()` automatically falls back to Latin-1 if UTF-8 decoding fails.
 
-**With the built-in `csv` module (no extra dependencies):**
+### List and look up organizations
+
 ```python
-import io
-import csv
+import asyncio
+from open_data_mexico import DatosGobMX
 
-async with DatosGobMX() as client:
-    detail = await client.get_dataset("expedientes_clasificados_ceav")
-    resource = detail.resources[0]
+async def main():
+    async with DatosGobMX() as client:
+        # All 184+ institutions
+        orgs = await client.get_organizations()
+        print(f"{len(orgs)} organizations")
+        for org in orgs[:5]:
+            print(f"  {org.slug}: {org.title} ({org.dataset_count} datasets)")
 
-    csv_str = await client.get_resource_data(resource)
-    reader = csv.DictReader(io.StringIO(csv_str))
-    rows = list(reader)
-    print(rows[0])  # {'col1': 'val1', ...}
+        # Single lookup
+        coneval = await client.get_organization("coneval")
+        if coneval:
+            print(coneval.description)
+
+asyncio.run(main())
 ```
 
-**As JSON-serializable dicts:**
+### Serialize to JSON
+
 ```python
-import io, csv, json
+import asyncio, json
+from open_data_mexico import DatosGobMX
 
-csv_str = await client.get_resource_data(resource)
-rows = list(csv.DictReader(io.StringIO(csv_str)))
-print(json.dumps(rows[:3], ensure_ascii=False, indent=2))
+async def main():
+    async with DatosGobMX() as client:
+        results = await client.search("pobreza")
+        # Pydantic v2 — datetime fields serialize as ISO 8601 strings
+        print(results.model_dump_json(indent=2))
+
+asyncio.run(main())
 ```
-
-> **Note on encoding:** Mexican government CSV files sometimes use latin-1 encoding.
-> `get_resource_data()` automatically falls back to latin-1 if UTF-8 decoding fails.
 
 ---
 
-## Optional: FastAPI Server
+## Optional: FastAPI REST Server
 
-Install with the `server` extra to run a REST API on top of the library:
-
-```bash
-pip install open-data-mexico[server]
-```
-
-Start the server:
+Install with the `server` extra to expose the library as a local REST API:
 
 ```bash
+pip install "open-data-mexico[server]"
 uvicorn server.app:app --reload
 ```
 
-The API is available at `http://localhost:8000`. Interactive docs at `/docs` (Swagger UI) and `/redoc`.
+Interactive docs at `http://localhost:8000/docs` (Swagger UI) and `/redoc`.
 
 ### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | API info and version |
-| `GET` | `/categories` | All categories → `CategoriesResponse` |
+| `GET` | `/categories` | All 28 categories → `CategoriesResponse` |
 | `GET` | `/categories/{slug}` | Single category → `Category` (404 if not found) |
 | `GET` | `/categories/{slug}/datasets` | All datasets in a category → `DatasetsResponse` |
-| `GET` | `/datasets/{slug}` | Full dataset detail → `DatasetDetail` |
+| `GET` | `/datasets/{slug}` | Full dataset detail → `DatasetDetail` (404 if not found) |
+| `GET` | `/organizations` | All organizations → `OrganizationsResponse` |
+| `GET` | `/organizations/{slug}` | Single organization → `Organization` (404 if not found) |
+| `GET` | `/search?q=...` | Full-text search → `SearchResponse` |
 
-Example responses:
+**Search query parameters:**
 
-```jsonc
-// GET /categories/seguridad
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `q` | yes | — | Free-text search term |
+| `category` | no | — | Category slug to restrict results |
+| `limit` | no | `20` | Results per page (max 1000) |
+| `offset` | no | `0` | Results to skip for pagination |
+
+**Example requests:**
+
+```bash
+# Search
+curl "http://localhost:8000/search?q=rezago+social"
+curl "http://localhost:8000/search?q=educacion&category=educacion&limit=5&offset=10"
+
+# Categories
+curl http://localhost:8000/categories/seguridad
+curl http://localhost:8000/categories/seguridad/datasets
+
+# Dataset detail
+curl http://localhost:8000/datasets/incidencia_delictiva
+
+# Organizations
+curl http://localhost:8000/organizations
+curl http://localhost:8000/organizations/coneval
+```
+
+**Example response — `GET /search?q=rezago+social`:**
+
+```json
 {
-  "slug": "seguridad",
-  "name": "Seguridad",
-  "description": "Datos a nivel federal y estatal sobre los delitos...",
-  "dataset_count": 403,
-  "image_url": "https://www.datos.gob.mx/uploads/group/...seguridad.svg",
-  "url": "https://www.datos.gob.mx/group/seguridad"
-}
-
-// GET /categories/seguridad/datasets  (abbreviated)
-{
-  "total": 403,
-  "category_slug": "seguridad",
+  "total": 12,
+  "query": "rezago social",
+  "category": null,
+  "offset": 0,
   "datasets": [
     {
-      "slug": "incidencia_delictiva",
-      "title": "Incidencia delictiva",
-      "last_updated": "3 de marzo 2026",
-      "description": "Se muestran los hechos delictivos...",
-      "category_slug": "seguridad",
-      "category_name": "Seguridad",
-      "organization_slug": "sesnsp",
-      "organization_name": "Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)",
-      "resource_count": 3,
-      "url": "https://www.datos.gob.mx/dataset/incidencia_delictiva"
+      "slug": "rezago_social",
+      "title": "Rezago social",
+      "last_updated": "2025-06-04T18:44:31Z",
+      "description": "Medida que permite ordenar unidades geográficas...",
+      "category_slug": "poblacion",
+      "category_name": "Población",
+      "organization_slug": "coneval",
+      "organization_name": "Consejo Nacional de Evaluación... (CONEVAL)",
+      "resource_count": 17,
+      "url": "https://www.datos.gob.mx/dataset/rezago_social"
     }
   ]
 }
@@ -294,16 +430,19 @@ Example responses:
 
 ```bash
 # Clone and install all dev dependencies
+git clone https://github.com/lehcimhdz/open-data-mexico-api.git
+cd open-data-mexico-api
 pip install -e ".[dev]"
 
-# Run the full test suite (with coverage)
+# Run the full test suite (with coverage report)
 pytest
 
-# Without coverage (faster)
+# Faster run without coverage
 pytest --no-cov -v
 
-# Lint
+# Lint + format
 ruff check .
+ruff format .
 
 # Type check
 mypy open_data_mexico/
@@ -312,22 +451,29 @@ mypy open_data_mexico/
 ### Project layout
 
 ```
-open_data_mexico/          # installable library package
-├── __init__.py            # public API surface
-├── _config.py             # BASE_URL and HTTP headers (private)
-├── client.py              # DatosGobMX async client class
-├── models.py              # Pydantic data models
-└── _scrapers/             # HTML scraping internals (private)
-    ├── categories.py      # scraper for /group/ listing pages
-    ├── datasets.py        # scraper for /group/{slug} dataset pages
-    └── dataset_detail.py  # scraper for /dataset/{slug} detail pages
+open_data_mexico/             # installable library package
+├── __init__.py               # public API surface
+├── _config.py                # BASE_URL, headers, defaults (private)
+├── _http.py                  # robust_get() with retry/backoff (private)
+├── _utils.py                 # datetime parsing helpers (private)
+├── client.py                 # DatosGobMX async client
+├── models.py                 # Pydantic data models
+├── py.typed                  # PEP 561 marker
+└── _scrapers/                # scraping internals (private)
+    ├── categories.py         # /group/ listing pages
+    ├── datasets.py           # /group/{slug} dataset pages
+    ├── dataset_detail.py     # /dataset/{slug} detail pages
+    ├── organizations.py      # CKAN organization_list / organization_show
+    └── search.py             # CKAN package_search
 server/
-└── app.py                 # optional FastAPI REST server
+└── app.py                    # optional FastAPI REST server
 tests/
-├── conftest.py            # shared mock HTML fixtures
-├── test_categories.py     # 10 tests
-├── test_datasets.py       # 8 tests
-└── test_dataset_detail.py # 26 tests
+├── conftest.py               # shared HTML fixtures
+├── test_categories.py
+├── test_datasets.py
+├── test_dataset_detail.py
+├── test_organizations.py
+└── test_search.py
 ```
 
 ---
@@ -345,7 +491,7 @@ Dataset counts reflect the site as of March 2026 and will change over time.
 | `deporte` | Deporte | 10 |
 | `derechos_humanos` | Derechos humanos | 53 |
 | `economia` | Economía | 284 |
-| `educacion` | Educación | 1420 |
+| `educacion` | Educación | 1 420 |
 | `energia` | Energía | 271 |
 | `gobierno` | Gobierno | 135 |
 | `infraestructura` | Infraestructura | 125 |
