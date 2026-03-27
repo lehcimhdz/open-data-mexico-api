@@ -470,3 +470,183 @@ def dataset_detail_prs_html() -> str:
 </div>
 </body>
 </html>"""
+
+
+@pytest.fixture
+def dataset_detail_sesnsp_html() -> str:
+    """Real HTML structure from datos.gob.mx/dataset/incidencia_delictiva.
+
+    Notable: first resource uses 'Visualizar' instead of 'Consultar' on the
+    primary button — detail_url must still be extracted from the h3 link.
+    """
+    return """<!DOCTYPE html>
+<html lang="es">
+<body>
+<div class="jumbotron jumbotron-fluid" style="height: 220px; width: 100%;">
+  <div class="d-flex flex-column justify-content-center align-items-center text-white h-100">
+    <h1 class="text-center jumbotron-title font-weight-bolder">
+      Incidencia delictiva
+    </h1>
+  </div>
+</div>
+<div class="main">
+  <div id="content" class="container">
+    <div class="row">
+      <aside class="secondary col-md-4 px-2">
+        <section id="organization-info" class="module module-narrow">
+          <div class="module card custom-card mb-2 context-info">
+            <div class="module-content">
+              <div class="item-image-wrapper">
+                <a href="/organization/sesnsp">
+                  <img class="item-image" src="https://www.datos.gob.mx/uploads/group/LogoSESNSP.png" alt="sesnsp">
+                </a>
+              </div>
+              <h1 class="heading text-gold">Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)</h1>
+              <p class="description">Es un Órgano Administrativo Desconcentrado de la Secretaría de Gobernación...</p>
+              <p class="read-more"><a href="/organization/about/sesnsp">leer más</a></p>
+            </div>
+          </div>
+        </section>
+        <section class="module module-narrow module-shallow license">
+          <h2 class="module-social-heading">Licencia</h2>
+          <p class="module-content">
+            <a href="https://creativecommons.org/licenses/by/4.0/" rel="dc:rights">Creative Commons Attribution 4.0</a>
+          </p>
+        </section>
+      </aside>
+      <div class="primary col-md-8 col-xs-12 px-2" role="main">
+        <div class="notes embedded-content">
+          <p>Se muestran los hechos delictivos, así como los diferentes tipos de delito, ocurridos entre 2015 y diciembre de 2025.</p>
+        </div>
+        <section id="dataset-resources" class="resources">
+          <ul class="resource-list">
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="d9b2792a-33a2-4ea8-8527-210d9e99de5e">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/incidencia_delictiva/resource/d9b2792a-33a2-4ea8-8527-210d9e99de5e" title="Incidencia delictiva estatal">
+                      Incidencia delictiva estatal
+                    </a>
+                  </h3>
+                  <p class="mb-2">Se muestran los hechos delictivos ocurridos entre 2015 y diciembre 2025, en desagregación estatal.</p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/sesnsp">Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/incidencia_delictiva/resource/d9b2792a-33a2-4ea8-8527-210d9e99de5e" class="btn btn-primary">Visualizar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/INM_estatal_dic25.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="57fbd692-3e5c-4b1b-8621-694cb3a33035">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/incidencia_delictiva/resource/57fbd692-3e5c-4b1b-8621-694cb3a33035" title="Incidencia delictiva municipal">
+                      Incidencia delictiva municipal
+                    </a>
+                  </h3>
+                  <p class="mb-2">Se muestran los hechos delictivos ocurridos entre 2015 y diciembre de 2025, en desagregación municipal.</p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/sesnsp">Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/incidencia_delictiva/resource/57fbd692-3e5c-4b1b-8621-694cb3a33035" class="btn btn-primary">Consultar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/IDM_NM_dic25.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="resource-item card card-custom border-card mb-3" data-id="386f17d2-a488-4da2-9c85-99765b5a9cdc">
+              <div class="row g-0">
+                <div class="col-auto d-flex align-items-start p-3">
+                  <img class="image-fluid" style="max-width: 60px;" src="https://www.datos.gob.mx/uploads/group/seguridad.svg" alt="">
+                </div>
+                <div class="col p-3">
+                  <h3 class="mb-2">
+                    <a class="text-black" href="/dataset/incidencia_delictiva/resource/386f17d2-a488-4da2-9c85-99765b5a9cdc" title="Víctimas del fuero común">
+                      Víctimas del fuero común
+                    </a>
+                  </h3>
+                  <p class="mb-2">Se muestran los datos de las víctimas de hechos delictivos ocurridos entre 2015 y diciembre de 2025, en desagregación estatal, por sexo y rango de edad.</p>
+                  <p class="mb-2"><strong>Categoría:</strong> <a href="/group/seguridad">Seguridad</a></p>
+                  <p class="mb-2"><strong>Formatos:</strong>
+                    <span class="text-center rounded" property="dc:format" data-format="csv"><span class="ml-1">CSV</span></span>
+                  </p>
+                  <p class="mb-0"><strong>Institución:</strong>
+                    <a class="link-pink" href="/organization/sesnsp">Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)</a>
+                  </p>
+                  <div class="mt-4">
+                    <a href="/dataset/incidencia_delictiva/resource/386f17d2-a488-4da2-9c85-99765b5a9cdc" class="btn btn-primary">Consultar</a>
+                    <a href="https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/IDVFC_NM_dic25.csv" class="btn btn-outline-primary">Descargar</a>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+          </ul>
+        </section>
+        <section class="tags">
+          <ul class="tag-list">
+            <li><a class="tag" href="/dataset/?tags=Arma+fuego" title="Arma fuego">Arma fuego</a></li>
+            <li><a class="tag" href="/dataset/?tags=Carpetas" title="Carpetas">Carpetas</a></li>
+            <li><a class="tag" href="/dataset/?tags=Delito" title="Delito">Delito</a></li>
+            <li><a class="tag" href="/dataset/?tags=Extorsi%C3%B3n" title="Extorsión">Extorsión</a></li>
+            <li><a class="tag" href="/dataset/?tags=Feminicidio" title="Feminicidio">Feminicidio</a></li>
+            <li><a class="tag" href="/dataset/?tags=Homicidio+doloso" title="Homicidio doloso">Homicidio doloso</a></li>
+            <li><a class="tag" href="/dataset/?tags=Lesi%C3%B3n+dolosa" title="Lesión dolosa">Lesión dolosa</a></li>
+            <li><a class="tag" href="/dataset/?tags=Robo" title="Robo">Robo</a></li>
+            <li><a class="tag" href="/dataset/?tags=Secuestro" title="Secuestro">Secuestro</a></li>
+            <li><a class="tag" href="/dataset/?tags=Violaci%C3%B3n" title="Violación">Violación</a></li>
+            <li><a class="tag" href="/dataset/?tags=Violencia" title="Violencia">Violencia</a></li>
+          </ul>
+        </section>
+        <section class="additional-info">
+          <table class="table table-striped table-bordered table-condensed">
+            <thead>
+              <tr><th scope="col">Campo</th><th scope="col">Valor</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="dataset-label">Administrador</th>
+                <td class="dataset-details" property="dc:contributor">Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP)</td>
+              </tr>
+              <tr>
+                <th scope="row" class="dataset-label">Última actualización</th>
+                <td class="dataset-details">
+                  <span class="automatic-local-datetime" data-datetime="2026-03-03T22:09:46+0000">3 de marzo de 2026, 16:09 (UTC-06:00)</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" class="dataset-label">Creado</th>
+                <td class="dataset-details">
+                  <span class="automatic-local-datetime" data-datetime="2025-03-13T23:27:31+0000">13 de marzo de 2025, 17:27 (UTC-06:00)</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>"""

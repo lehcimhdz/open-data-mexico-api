@@ -183,3 +183,50 @@ async def test_get_resource_data_streams_csv(httpx_mock: HTTPXMock):
         data = await client.get_resource_data(resource)
     assert "col1,col2" in data
     assert "val1,val2" in data
+
+
+async def test_sesnsp_parse_title(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert detail.title == "Incidencia delictiva"
+
+
+async def test_sesnsp_parse_organization(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert detail.organization_slug == "sesnsp"
+    assert "SESNSP" in detail.organization_name
+
+
+async def test_sesnsp_parse_description(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert detail.description and "delictivos" in detail.description
+
+
+async def test_sesnsp_parse_resources(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert len(detail.resources) == 3
+    ids = [r.resource_id for r in detail.resources]
+    assert "d9b2792a-33a2-4ea8-8527-210d9e99de5e" in ids
+    assert "57fbd692-3e5c-4b1b-8621-694cb3a33035" in ids
+    assert "386f17d2-a488-4da2-9c85-99765b5a9cdc" in ids
+
+
+async def test_sesnsp_visualizar_resource_has_detail_url(dataset_detail_sesnsp_html):
+    """Resource with 'Visualizar' button still gets detail_url from the h3 link."""
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    estatal = next(r for r in detail.resources if r.resource_id == "d9b2792a-33a2-4ea8-8527-210d9e99de5e")
+    assert estatal.detail_url and "incidencia_delictiva/resource/d9b2792a" in estatal.detail_url
+    assert estatal.download_url == "https://repodatos.atdt.gob.mx/api_update/sesnsp/incidencia_delictiva/INM_estatal_dic25.csv"
+
+
+async def test_sesnsp_parse_tags(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert len(detail.tags) == 11
+    assert "Feminicidio" in detail.tags
+    assert "Homicidio doloso" in detail.tags
+    assert "Extorsión" in detail.tags
+
+
+async def test_sesnsp_parse_timestamps(dataset_detail_sesnsp_html):
+    detail = _parse_dataset_detail(dataset_detail_sesnsp_html, "incidencia_delictiva")
+    assert detail.created == "2025-03-13T23:27:31+0000"
+    assert detail.last_updated == "2026-03-03T22:09:46+0000"
