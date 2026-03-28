@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/pypi/pyversions/open-data-mexico)
 ![License](https://img.shields.io/pypi/l/open-data-mexico)
 ![CI](https://github.com/lehcimhdz/open-data-mexico-api/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
+[![Coverage](https://codecov.io/gh/lehcimhdz/open-data-mexico-api/branch/main/graph/badge.svg)](https://codecov.io/gh/lehcimhdz/open-data-mexico-api)
 
 Unofficial async Python client for [datos.gob.mx](https://www.datos.gob.mx/) — the Mexican government's open data platform, built on CKAN 2.11. Browse 28 thematic categories, search across 5 000+ datasets, fetch metadata, and download CSV data directly into memory.
 
