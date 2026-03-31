@@ -4,6 +4,7 @@ Covers: success, non-retryable 4xx, retryable 5xx/429 (eventual success and
 exhaustion), network-level errors (ConnectError, TimeoutException,
 RemoteProtocolError), request_delay sleep, and query params forwarding.
 """
+
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -18,6 +19,7 @@ _URL = "https://www.datos.gob.mx/test"
 # ---------------------------------------------------------------------------
 # Success path
 # ---------------------------------------------------------------------------
+
 
 async def test_success_returns_response(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=_URL, status_code=200, text="ok")
@@ -47,6 +49,7 @@ async def test_non_retryable_200_no_sleep_by_default(httpx_mock: HTTPXMock):
 # request_delay
 # ---------------------------------------------------------------------------
 
+
 async def test_request_delay_sleeps_after_success(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=_URL, status_code=200, text="ok")
     with patch("open_data_mexico._http.asyncio.sleep", new=AsyncMock()) as mock_sleep:
@@ -58,6 +61,7 @@ async def test_request_delay_sleeps_after_success(httpx_mock: HTTPXMock):
 # ---------------------------------------------------------------------------
 # Retryable HTTP status codes (5xx / 429)
 # ---------------------------------------------------------------------------
+
 
 async def test_retryable_500_retries_then_succeeds(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=_URL, status_code=500)
@@ -102,6 +106,7 @@ async def test_all_retryable_statuses_trigger_retry(httpx_mock: HTTPXMock):
 # Network-level errors (ConnectError, TimeoutException, RemoteProtocolError)
 # ---------------------------------------------------------------------------
 
+
 async def test_connect_error_retries_then_succeeds(httpx_mock: HTTPXMock):
     httpx_mock.add_exception(httpx.ConnectError("refused"))
     httpx_mock.add_response(url=_URL, status_code=200, text="ok")
@@ -142,6 +147,7 @@ async def test_remote_protocol_error_retries_then_succeeds(httpx_mock: HTTPXMock
 # Backoff sleep
 # ---------------------------------------------------------------------------
 
+
 async def test_backoff_sleep_called_between_retries(httpx_mock: HTTPXMock):
     """asyncio.sleep is called with 2**attempt (2, 4, …) between retries."""
     httpx_mock.add_response(url=_URL, status_code=500)
@@ -159,6 +165,7 @@ async def test_backoff_sleep_called_between_retries(httpx_mock: HTTPXMock):
 # ---------------------------------------------------------------------------
 # Query params
 # ---------------------------------------------------------------------------
+
 
 async def test_passes_query_params(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=f"{_URL}?q=test&limit=5", status_code=200, text="ok")

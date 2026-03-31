@@ -1,18 +1,17 @@
 """Tests for DatosGobMX client — cache behavior, standalone usage, and edge cases."""
+
 from time import monotonic
 from unittest.mock import AsyncMock, patch
 
-import httpx
-import pytest
 from pytest_httpx import HTTPXMock
 
 from open_data_mexico import DatosGobMX
 from open_data_mexico.models import Category, Organization, Resource
 
-
 # ---------------------------------------------------------------------------
 # _cache_get / _cache_set internals
 # ---------------------------------------------------------------------------
+
 
 class TestCacheGet:
     def test_returns_none_when_ttl_disabled(self):
@@ -55,6 +54,7 @@ class TestCacheSet:
 # get_categories — cache hit
 # ---------------------------------------------------------------------------
 
+
 class TestGetCategoriesCache:
     async def test_returns_cached_result_without_http(self):
         mock_cats = [Category(slug="a", name="A", url="https://x.com", dataset_count=1)]
@@ -72,6 +72,7 @@ class TestGetCategoriesCache:
 # ---------------------------------------------------------------------------
 # get_category_datasets — cache hit
 # ---------------------------------------------------------------------------
+
 
 class TestGetCategoryDatasetsCache:
     async def test_returns_cached_datasets_without_http(self):
@@ -93,13 +94,16 @@ class TestGetCategoryDatasetsCache:
 # get_organizations — cache hit
 # ---------------------------------------------------------------------------
 
+
 class TestGetOrganizationsCache:
     async def test_returns_cached_organizations_without_http(self):
         fake_orgs = [Organization(slug="org1", title="Org 1", url="https://x.com", dataset_count=5)]
         client = DatosGobMX(cache_ttl=60)
         client._cache_set("organizations", fake_orgs)
 
-        with patch("open_data_mexico._scrapers.organizations.fetch_all_organizations") as mock_fetch:
+        with patch(
+            "open_data_mexico._scrapers.organizations.fetch_all_organizations"
+        ) as mock_fetch:
             async with client:
                 result = await client.get_organizations()
 
@@ -111,9 +115,9 @@ class TestGetOrganizationsCache:
 # get_dataset — None result is not cached
 # ---------------------------------------------------------------------------
 
+
 class TestGetDatasetNotCached:
     async def test_none_result_not_stored_in_cache(self):
-        from open_data_mexico._scrapers.dataset_detail import fetch_dataset_detail
 
         with patch(
             "open_data_mexico._scrapers.dataset_detail.fetch_dataset_detail",
@@ -130,6 +134,7 @@ class TestGetDatasetNotCached:
 # ---------------------------------------------------------------------------
 # get_resource_data — latin-1 fallback
 # ---------------------------------------------------------------------------
+
 
 class TestGetResourceDataEncoding:
     async def test_latin1_fallback_on_utf8_decode_error(self, httpx_mock: HTTPXMock):
@@ -171,11 +176,13 @@ class TestGetResourceDataEncoding:
 # Standalone usage (no context manager) — exercises the finally cleanup branch
 # ---------------------------------------------------------------------------
 
+
 class TestStandaloneUsage:
     async def test_get_categories_without_context_manager(self, httpx_mock: HTTPXMock):
-        from open_data_mexico._scrapers.categories import _parse_categories_page
 
-        mock_categories = [Category(slug="salud", name="Salud", url="https://x.com", dataset_count=10)]
+        mock_categories = [
+            Category(slug="salud", name="Salud", url="https://x.com", dataset_count=10)
+        ]
         with patch(
             "open_data_mexico.client.fetch_all_categories",
             new=AsyncMock(return_value=mock_categories),

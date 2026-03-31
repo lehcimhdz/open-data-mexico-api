@@ -1,14 +1,15 @@
 """Tests for open_data_mexico._utils date-parsing helpers."""
+
 from datetime import UTC, datetime
 
 import pytest
 
 from open_data_mexico._utils import parse_iso_dt, parse_spanish_date
 
-
 # ---------------------------------------------------------------------------
 # parse_spanish_date
 # ---------------------------------------------------------------------------
+
 
 class TestParseSpanishDate:
     def test_valid_date(self):
@@ -33,11 +34,23 @@ class TestParseSpanishDate:
     def test_case_insensitive_month(self):
         assert parse_spanish_date("17 de Marzo 2026") == datetime(2026, 3, 17, tzinfo=UTC)
 
-    @pytest.mark.parametrize("month_name,month_num", [
-        ("enero", 1), ("febrero", 2), ("marzo", 3), ("abril", 4),
-        ("mayo", 5), ("junio", 6), ("julio", 7), ("agosto", 8),
-        ("septiembre", 9), ("octubre", 10), ("noviembre", 11), ("diciembre", 12),
-    ])
+    @pytest.mark.parametrize(
+        "month_name,month_num",
+        [
+            ("enero", 1),
+            ("febrero", 2),
+            ("marzo", 3),
+            ("abril", 4),
+            ("mayo", 5),
+            ("junio", 6),
+            ("julio", 7),
+            ("agosto", 8),
+            ("septiembre", 9),
+            ("octubre", 10),
+            ("noviembre", 11),
+            ("diciembre", 12),
+        ],
+    )
     def test_all_twelve_months(self, month_name: str, month_num: int):
         result = parse_spanish_date(f"1 de {month_name} 2024")
         assert result == datetime(2024, month_num, 1, tzinfo=UTC)
@@ -58,6 +71,7 @@ class TestParseSpanishDate:
 # ---------------------------------------------------------------------------
 # parse_iso_dt
 # ---------------------------------------------------------------------------
+
 
 class TestParseIsoDt:
     def test_offset_aware_string(self):

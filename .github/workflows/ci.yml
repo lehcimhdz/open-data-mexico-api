@@ -69,8 +69,8 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install dependencies and pip-audit
-        run: pip install -e ".[dev]" pip-audit
+      - name: Upgrade pip and install dependencies and pip-audit
+        run: pip install --upgrade pip && pip install -e ".[dev]" pip-audit
 
       - name: Audit installed packages for CVEs
         run: pip-audit
