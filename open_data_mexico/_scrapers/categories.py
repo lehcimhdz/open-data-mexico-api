@@ -41,11 +41,11 @@ async def _parse_categories_page(html: str) -> list[Category]:
         img = item.select_one("img.media-image")
         slug = None
         if img and img.get("alt"):
-            slug = img["alt"].strip()
+            slug = str(img["alt"]).strip()
         if not slug:
             a = item.select_one("a.media-view")
             if a and a.get("href"):
-                slug = a["href"].rstrip("/").split("/")[-1]
+                slug = str(a["href"]).rstrip("/").split("/")[-1]
 
         # name
         h2 = item.select_one("h2.media-heading")
@@ -67,7 +67,7 @@ async def _parse_categories_page(html: str) -> list[Category]:
         # image_url
         image_url = None
         if img and img.get("src"):
-            src = img["src"]
+            src = str(img["src"])
             if src.startswith("https://"):
                 image_url = src
             else:
@@ -77,7 +77,7 @@ async def _parse_categories_page(html: str) -> list[Category]:
         a = item.select_one("a.media-view")
         url = ""
         if a and a.get("href"):
-            href = a["href"]
+            href = str(a["href"])
             if href.startswith("https://"):
                 url = href
             else:

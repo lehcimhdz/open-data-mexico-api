@@ -40,7 +40,7 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
         title_a = item.select_one("h3 a.text-black")
         if not title_a:
             continue
-        href = title_a.get("href", "")
+        href = str(title_a.get("href") or "")
         slug = href.rstrip("/").split("/")[-1]
         title = title_a.get_text(strip=True)
         url = BASE_URL + href if href.startswith("/") else href
@@ -71,11 +71,11 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
         for p in item.select("p"):
             strong = p.find("strong")
             if strong and "Categoría" in strong.get_text():
-                a = p.find("a")
-                if a:
-                    cat_href = a.get("href", "")
+                cat_a = p.find("a")
+                if cat_a:
+                    cat_href = str(cat_a.get("href") or "")
                     category_slug = cat_href.rstrip("/").split("/")[-1]
-                    category_name = a.get_text(strip=True)
+                    category_name = cat_a.get_text(strip=True)
                 break
 
         # organization: a.link-pink
@@ -83,7 +83,7 @@ def _parse_datasets_page(html: str) -> list[Dataset]:
         organization_name = None
         org_a = item.select_one("a.link-pink")
         if org_a:
-            org_href = org_a.get("href", "")
+            org_href = str(org_a.get("href") or "")
             organization_slug = org_href.rstrip("/").split("/")[-1]
             organization_name = org_a.get_text(strip=True)
 

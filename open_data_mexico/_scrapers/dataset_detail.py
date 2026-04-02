@@ -90,16 +90,17 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
         # slug from img alt or from link href
         img = org_section.select_one("img.item-image")
         if img and img.get("alt"):
-            organization_slug = img["alt"].strip()
+            organization_slug = str(img["alt"]).strip()
         if not organization_slug:
             a = org_section.select_one("a[href*='/organization/']")
             if a:
-                organization_slug = a["href"].rstrip("/").split("/")[-1]
+                organization_slug = str(a["href"]).rstrip("/").split("/")[-1]
 
     # license
     license_a = soup.select_one("section.license a[rel='dc:rights']")
     license_name = license_a.get_text(strip=True) if license_a else None
-    license_url = license_a.get("href") if license_a else None
+    license_url_raw = license_a.get("href") if license_a else None
+    license_url = str(license_url_raw) if license_url_raw is not None else None
 
     # tags
     tags = [a.get_text(strip=True) for a in soup.select("ul.tag-list li a.tag")]
@@ -115,7 +116,8 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
         span = row.select_one("span.automatic-local-datetime")
         if not span:
             continue
-        dt = span.get("data-datetime")
+        dt_raw = span.get("data-datetime")
+        dt = str(dt_raw) if dt_raw is not None else None
         if "ltima actualizaci" in label or "Última" in label:
             last_updated = parse_iso_dt(dt)
         elif "Creado" in label:
@@ -124,11 +126,11 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
     # resources
     resources = []
     for li in soup.select("ul.resource-list li.resource-item"):
-        resource_id = li.get("data-id", "")
+        resource_id = str(li.get("data-id") or "")
 
         name_a = li.select_one("h3 a.text-black")
         name = name_a.get_text(strip=True) if name_a else ""
-        detail_href = name_a.get("href", "") if name_a else ""
+        detail_href = str(name_a.get("href") or "") if name_a else ""
         detail_url = (BASE_URL + detail_href) if detail_href.startswith("/") else detail_href
 
         # description: p without strong and without a.ms-1 (just plain text paragraph)
@@ -142,14 +144,14 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
 
         # format
         fmt_span = li.select_one("span[data-format]")
-        fmt = fmt_span.get("data-format", "").lower() if fmt_span else None
+        fmt = str(fmt_span.get("data-format") or "").lower() if fmt_span else None
 
         # category
         cat_a = li.select_one("a[href*='/group/']")
         category_slug = None
         category_name = None
         if cat_a:
-            category_slug = cat_a.get("href", "").rstrip("/").split("/")[-1]
+            category_slug = str(cat_a.get("href") or "").rstrip("/").split("/")[-1]
             category_name = cat_a.get_text(strip=True)
 
         # organization
@@ -157,12 +159,13 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
         res_org_slug = None
         res_org_name = None
         if org_a:
-            res_org_slug = org_a.get("href", "").rstrip("/").split("/")[-1]
+            res_org_slug = str(org_a.get("href") or "").rstrip("/").split("/")[-1]
             res_org_name = org_a.get_text(strip=True)
 
         # download URL (Descargar button)
         dl_a = li.select_one("a.btn-outline-primary")
-        download_url = dl_a.get("href") if dl_a else None
+        dl_href = dl_a.get("href") if dl_a else None
+        download_url = str(dl_href) if dl_href is not None else None
 
         resources.append(
             Resource(
