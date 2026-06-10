@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Nightly GitHub Actions smoke test against the live `datos.gob.mx` endpoints; opens a `bug` issue automatically if the public site changes shape and the scrapers regress.
 - `request_delay` parameter on `DatosGobMX` for configurable rate limiting between requests.
 - `max_retries` parameter on `DatosGobMX` for automatic retry with exponential backoff on 5xx/429 and network errors.
 - `cache_ttl` parameter on `DatosGobMX` for in-memory TTL caching of responses (default 300 s).
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README updated to document new client parameters and corrected test count.
 
 ### Fixed
+- Cast BeautifulSoup `.get()` results to `str` so mypy stops complaining about `Optional[str | list[str]]`.
 - Unused imports removed across `client.py`, `server/app.py`, and test files (ruff F401).
 - `Optional[str]` annotations modernised to `str | None` (ruff UP045).
 
