@@ -1,0 +1,65 @@
+name: Nightly smoke test
+
+on:
+  schedule:
+    # 06:00 UTC = 00:00 CST (Mexico) — runs after the daily catalog refresh window
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    name: smoke against datos.gob.mx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Hit live endpoints
+        id: smoke
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import asyncio, sys
+          from open_data_mexico import DatosGobMX
+
+          async def main() -> int:
+              async with DatosGobMX(request_delay=0.5) as client:
+                  cats = await client.get_categories()
+                  if len(cats) < 20:
+                      print(f"FAIL: expected >= 20 categories, got {len(cats)}", file=sys.stderr)
+                      return 1
+                  ds = await client.get_dataset("incidencia_delictiva")
+                  if ds is None or not ds.resources:
+                      print("FAIL: incidencia_delictiva missing or has no resources", file=sys.stderr)
+                      return 1
+                  search = await client.search("rezago social")
+                  if search.total == 0:
+                      print("FAIL: 'rezago social' returned 0 results", file=sys.stderr)
+                      return 1
+                  print(f"OK: {len(cats)} categories, {len(ds.resources)} resources on incidencia_delictiva, {search.total} hits for 'rezago social'")
+                  return 0
+
+          sys.exit(asyncio.run(main()))
+          PY
+      - name: Open alert issue on failure
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Nightly smoke test failed against datos.gob.mx",
+              body: `The nightly smoke test against the live datos.gob.mx endpoints failed.\n\nThis usually means the public HTML/JSON shape changed and the scrapers need an update.\n\nSee the failed run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ["bug"]
+            })
+      - name: Re-fail the job
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
