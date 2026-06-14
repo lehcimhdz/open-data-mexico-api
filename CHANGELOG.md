@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.2] — 2026-06-14
+
+### Fixed
+- `get_organizations()` was hitting CKAN's `organization_list` endpoint
+  without `limit`/`offset` and getting truncated at the API's 25-row default,
+  so callers saw 25 of the 184 publishing institutions on datos.gob.mx. The
+  scraper now paginates in 200-row batches until the server returns a short
+  page, with a 100 000-row safety ceiling.
+
+---
+
 ## [1.2.1] — 2026-06-14
 
 ### Fixed
@@ -96,7 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 44 tests with mock HTML fixtures (pytest-asyncio + pytest-httpx).
 - Documentation for all 28 available categories.
 
-[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v0.1.0...v1.1.0

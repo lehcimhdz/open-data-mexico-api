@@ -30,6 +30,13 @@ def _parse_org(data: dict) -> Organization:
     )
 
 
+# datos.gob.mx's CKAN ignores the `limit` parameter on organization_list and
+# always returns 25 rows. We still send a generous `limit` so a more sensible
+# CKAN install could give us bigger pages, but we drive pagination off the
+# actual page size and the presence of more rows at `offset = total`.
+_ORG_LIST_PAGE_SIZE = 1000
+
+
 async def fetch_all_organizations(
     client: httpx.AsyncClient,
     *,
@@ -38,30 +45,49 @@ async def fetch_all_organizations(
 ) -> list[Organization]:
     """Fetch all organizations from the CKAN API.
 
+    Paginates using ``offset`` until an empty page comes back. This works
+    even on CKAN installs that cap the response well below the requested
+    ``limit`` (datos.gob.mx returns 25 regardless of what we ask for).
+
     Args:
         client: Active ``httpx.AsyncClient``.
-        request_delay: Seconds to sleep after the request (rate limiting).
+        request_delay: Seconds to sleep after each request (rate limiting).
         max_retries: Retry attempts on transient failures.
 
     Returns:
-        List of all Organization objects, sorted by slug.
+        List of every Organization the server is willing to show.
 
     Raises:
         httpx.HTTPStatusError: On non-2xx API responses.
         ValueError: If the CKAN API returns ``success: false``.
     """
-    resp = await robust_get(
-        client,
-        _ORG_LIST_URL,
-        params={"all_fields": "true", "include_dataset_count": "true"},
-        request_delay=request_delay,
-        max_retries=max_retries,
-    )
-    resp.raise_for_status()
-    body = resp.json()
-    if not body.get("success"):
-        raise ValueError(f"CKAN API error: {body.get('error')}")
-    return [_parse_org(o) for o in body["result"]]
+    all_orgs: list[Organization] = []
+    offset = 0
+    while True:
+        resp = await robust_get(
+            client,
+            _ORG_LIST_URL,
+            params={
+                "all_fields": "true",
+                "include_dataset_count": "true",
+                "limit": _ORG_LIST_PAGE_SIZE,
+                "offset": offset,
+            },
+            request_delay=request_delay,
+            max_retries=max_retries,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if not body.get("success"):
+            raise ValueError(f"CKAN API error: {body.get('error')}")
+        page = body["result"]
+        if not page:
+            break
+        all_orgs.extend(_parse_org(o) for o in page)
+        offset += len(page)
+        if offset > 100_000:  # safety net
+            break
+    return all_orgs
 
 
 async def fetch_organization(
