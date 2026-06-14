@@ -45,6 +45,8 @@ Quick start::
     asyncio.run(main())
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from open_data_mexico.client import DatosGobMX
 from open_data_mexico.models import (
     CategoriesResponse,
@@ -58,7 +60,10 @@ from open_data_mexico.models import (
     SearchResponse,
 )
 
-__version__ = "0.1.0"
+try:
+    __version__ = version("open-data-mexico")
+except PackageNotFoundError:  # pragma: no cover - editable install w/o metadata
+    __version__ = "0.0.0+unknown"
 __all__ = [
     "DatosGobMX",
     "Category",

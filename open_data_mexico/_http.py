@@ -8,10 +8,11 @@ Wraps httpx.AsyncClient.get() with:
 
 import asyncio
 import logging
+from collections.abc import Sequence
 
 import httpx
 
-from open_data_mexico._config import MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._config import CONCURRENCY, MAX_RETRIES, REQUEST_DELAY
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +100,52 @@ async def robust_get(
 
     assert last_exc is not None
     raise last_exc
+
+
+async def gather_pages(
+    client: httpx.AsyncClient,
+    requests: Sequence[tuple[str, dict | None]],
+    *,
+    concurrency: int = CONCURRENCY,
+    max_retries: int = MAX_RETRIES,
+    request_delay: float = REQUEST_DELAY,
+) -> list[httpx.Response]:
+    """Fetch many URLs in parallel while keeping result order.
+
+    A bounded ``asyncio.Semaphore`` caps the number of in-flight requests at
+    ``concurrency`` so we stay polite to the upstream site. Each individual
+    request still goes through :func:`robust_get`, so retries, backoff and
+    ``request_delay`` all apply per-page.
+
+    Args:
+        client: An active ``httpx.AsyncClient``.
+        requests: Sequence of ``(url, params)`` tuples to fetch. ``params``
+            may be ``None`` if the URL has no query string.
+        concurrency: Max in-flight requests. Default 5.
+        max_retries: Forwarded to :func:`robust_get`.
+        request_delay: Forwarded to :func:`robust_get` — sleeps after each
+            successful request inside its worker, not across workers.
+
+    Returns:
+        A list of :class:`httpx.Response` aligned with ``requests`` (same order).
+
+    Raises:
+        Whatever :func:`robust_get` raises — the first failing worker bubbles
+        its exception out of ``asyncio.gather``.
+    """
+    if not requests:
+        return []
+
+    sem = asyncio.Semaphore(max(concurrency, 1))
+
+    async def _one(url: str, params: dict | None) -> httpx.Response:
+        async with sem:
+            return await robust_get(
+                client,
+                url,
+                params=params,
+                max_retries=max_retries,
+                request_delay=request_delay,
+            )
+
+    return await asyncio.gather(*(_one(url, params) for url, params in requests))

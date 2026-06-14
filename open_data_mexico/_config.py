@@ -17,3 +17,7 @@ MAX_RETRIES: int = 3
 
 # Seconds to cache responses in memory (0 = disabled). 300 = 5 minutes.
 CACHE_TTL: float = 300.0
+
+# Max number of pages fetched in parallel during auto-pagination.
+# Each concurrent worker still respects MAX_RETRIES and REQUEST_DELAY.
+CONCURRENCY: int = 5

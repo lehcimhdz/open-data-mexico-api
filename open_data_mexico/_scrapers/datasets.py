@@ -14,12 +14,13 @@ Pagination sits in ul.pagination; URL pattern: /group/{slug}?page={n}.
 """
 
 import re
+from collections.abc import AsyncGenerator
 
 import httpx
 from bs4 import BeautifulSoup
 
-from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
-from open_data_mexico._http import robust_get
+from open_data_mexico._config import BASE_URL, CONCURRENCY, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._http import gather_pages, robust_get
 from open_data_mexico._utils import parse_spanish_date
 from open_data_mexico.models import Dataset
 
@@ -142,14 +143,19 @@ async def fetch_category_datasets(
     *,
     request_delay: float = REQUEST_DELAY,
     max_retries: int = MAX_RETRIES,
+    concurrency: int = CONCURRENCY,
 ) -> list[Dataset]:
     """Fetch all datasets for a category across all pages.
+
+    Page 1 is fetched first to learn the total page count; remaining pages
+    are fetched in parallel under a semaphore of size ``concurrency``.
 
     Args:
         client: An active ``httpx.AsyncClient`` with appropriate headers.
         category_slug: The category URL identifier, e.g. ``"seguridad"``.
         request_delay: Seconds to sleep after each successful request (rate limiting).
         max_retries: Retry attempts on transient failures.
+        concurrency: Max number of pages fetched in parallel. Default 5.
 
     Returns:
         Combined list of all Dataset objects from every page, in site order
@@ -169,6 +175,59 @@ async def fetch_category_datasets(
     total_pages = _get_total_pages(resp.text)
     datasets = _parse_datasets_page(resp.text)
 
+    if total_pages > 1:
+        remaining = [
+            (f"{BASE_URL}/group/{category_slug}", {"page": page})
+            for page in range(2, total_pages + 1)
+        ]
+        responses = await gather_pages(
+            client,
+            remaining,
+            concurrency=concurrency,
+            max_retries=max_retries,
+            request_delay=request_delay,
+        )
+        for r in responses:
+            r.raise_for_status()
+            datasets.extend(_parse_datasets_page(r.text))
+
+    return datasets
+
+
+async def iter_category_datasets(
+    client: httpx.AsyncClient,
+    category_slug: str,
+    *,
+    request_delay: float = REQUEST_DELAY,
+    max_retries: int = MAX_RETRIES,
+) -> AsyncGenerator[Dataset, None]:
+    """Yield datasets page-by-page for a category.
+
+    Unlike :func:`fetch_category_datasets`, this is a streaming async
+    generator: page 1 yields its datasets immediately, then each subsequent
+    page is fetched sequentially so memory stays bounded and the caller can
+    stop early without waiting for the full pagination.
+
+    Args:
+        client: An active ``httpx.AsyncClient`` with appropriate headers.
+        category_slug: The category URL identifier, e.g. ``"seguridad"``.
+        request_delay: Seconds to sleep after each successful request.
+        max_retries: Retry attempts on transient failures.
+
+    Yields:
+        Each :class:`~open_data_mexico.models.Dataset` in page order.
+    """
+    resp = await robust_get(
+        client,
+        f"{BASE_URL}/group/{category_slug}",
+        request_delay=request_delay,
+        max_retries=max_retries,
+    )
+    resp.raise_for_status()
+    total_pages = _get_total_pages(resp.text)
+    for ds in _parse_datasets_page(resp.text):
+        yield ds
+
     for page in range(2, total_pages + 1):
         resp = await robust_get(
             client,
@@ -178,6 +237,5 @@ async def fetch_category_datasets(
             max_retries=max_retries,
         )
         resp.raise_for_status()
-        datasets.extend(_parse_datasets_page(resp.text))
-
-    return datasets
+        for ds in _parse_datasets_page(resp.text):
+            yield ds

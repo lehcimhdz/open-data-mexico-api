@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] — 2026-06-13
+
+### Added
+- **Command-line interface** — installable `open-data-mx` console script (argparse-based, no new runtime deps) with subcommands `categories`, `category`, `datasets`, `dataset`, `organizations`, `organization`, `search`, `download`. Supports `--json` machine-readable output and global `--timeout/--delay/--retries/--concurrency` flags.
+- **Concurrent pagination** — categories and per-category dataset listings now fetch the first page sequentially (to learn `total_pages`) and the remaining pages in parallel, capped by a semaphore. New constructor parameter `DatosGobMX(concurrency: int = 5)` and matching `gather_pages()` helper in `open_data_mexico._http`.
+- **Streaming pagination** — `DatosGobMX.iter_category_datasets(slug)` async generator yields datasets page-by-page, so callers can start processing without waiting for the full pagination and can break early.
+- **Binary downloads** — `DatosGobMX.get_resource_bytes(resource)` returns raw bytes for any resource (XLSX, ZIP, SHP, PDF…).
+- **Pandas convenience** — `DatosGobMX.get_resource_dataframe(resource, **read_kwargs)` returns a DataFrame, auto-dispatching `csv`/`txt` → `read_csv` (UTF-8 with latin-1 fallback) and `xls`/`xlsx` → `read_excel`. Raises a helpful `ImportError` when pandas is missing.
+- **Cache management** — public methods `clear_cache()` and `invalidate(key_prefix)` on `DatosGobMX`.
+- **Server polish** — `/health` endpoint, CORS middleware (configurable via `CORS_ORIGINS` env var), tagged OpenAPI groups, dynamic version sourced from `importlib.metadata`.
+
+### Changed
+- `__version__` is now read from `importlib.metadata.version("open-data-mexico")` instead of a hard-coded string, so it always tracks `pyproject.toml`.
+- `SECURITY.md` "Supported versions" table updated to `1.x ✅`.
+
+### Fixed
+- Version drift: `__version__` reported `0.1.0` while the published package was `1.1.0`.
+- FastAPI app constructor and `/` endpoint were also hard-coded to `0.1.0`.
+
+---
+
+## [1.1.0]
+
 ### Added
 - Nightly GitHub Actions smoke test against the live `datos.gob.mx` endpoints; opens a `bug` issue automatically if the public site changes shape and the scrapers regress.
 - `request_delay` parameter on `DatosGobMX` for configurable rate limiting between requests.
@@ -58,5 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 44 tests with mock HTML fixtures (pytest-asyncio + pytest-httpx).
 - Documentation for all 28 available categories.
 
-[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v0.1.0...v1.1.0
 [0.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/releases/tag/v0.1.0

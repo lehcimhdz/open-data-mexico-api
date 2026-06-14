@@ -170,4 +170,6 @@ def test_package_exports():
     assert hasattr(open_data_mexico, "DatosGobMX")
     assert hasattr(open_data_mexico, "Category")
     assert hasattr(open_data_mexico, "CategoriesResponse")
-    assert open_data_mexico.__version__ == "0.1.0"
+    # Version is sourced from importlib.metadata (pyproject.toml); just sanity-check the shape.
+    assert isinstance(open_data_mexico.__version__, str)
+    assert open_data_mexico.__version__.count(".") >= 1

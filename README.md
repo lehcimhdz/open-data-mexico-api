@@ -104,19 +104,25 @@ async with DatosGobMX(request_delay=0.5) as client:
 | `request_delay` | `float` | `0.0` | Seconds to sleep between requests (polite rate limiting) |
 | `max_retries` | `int` | `3` | Retry attempts on 5xx / 429 or transient network errors (exponential backoff: 2 s, 4 s, 8 s) |
 | `cache_ttl` | `float` | `300.0` | Seconds to cache responses in memory; `0` disables caching |
+| `concurrency` | `int` | `5` | Max number of pages fetched in parallel during auto-pagination |
 
 ### Methods
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_categories()` | `list[Category]` | All 28 thematic categories (auto-paginates) |
+| `get_categories()` | `list[Category]` | All 28 thematic categories (auto-paginates, parallel) |
 | `get_category(slug)` | `Category \| None` | Single category by slug; `None` if not found |
-| `get_category_datasets(slug)` | `list[Dataset]` | All datasets in a category (auto-paginates all pages) |
+| `get_category_datasets(slug)` | `list[Dataset]` | All datasets in a category (auto-paginates all pages in parallel) |
+| `iter_category_datasets(slug)` | `AsyncIterator[Dataset]` | Streaming variant — yields page-by-page, bypasses the cache |
 | `get_dataset(slug)` | `DatasetDetail \| None` | Full dataset detail including all resources; `None` if not found |
-| `get_resource_data(resource)` | `str` | Download raw file content (CSV) into a string — no disk writes |
+| `get_resource_data(resource)` | `str` | Download raw file content (CSV) into a string — UTF-8 with latin-1 fallback |
+| `get_resource_bytes(resource)` | `bytes` | Download raw bytes — use for XLSX/ZIP/SHP/PDF |
+| `get_resource_dataframe(resource, **kw)` | `pandas.DataFrame` | One-line CSV/XLSX → DataFrame (requires `[pandas]` extra) |
 | `search(query, *, category, limit, offset)` | `SearchResponse` | Full-text search across all datasets via CKAN API |
 | `get_organizations()` | `list[Organization]` | All 184+ publishing institutions (auto-paginates) |
 | `get_organization(slug)` | `Organization \| None` | Single organization by slug; `None` if not found |
+| `clear_cache()` | `None` | Drop every entry from the in-memory response cache |
+| `invalidate(key_prefix)` | `int` | Drop cache entries whose key starts with the prefix; returns count |
 
 All methods raise `httpx.HTTPStatusError` on unrecoverable HTTP errors and `httpx.RequestError` on network failures (timeout, DNS, etc.). Transient 5xx / 429 errors are retried automatically up to `max_retries` times.
 
@@ -308,6 +314,46 @@ asyncio.run(main())
 
 > **Encoding note:** Some government CSV files use Latin-1 encoding. `get_resource_data()` automatically falls back to Latin-1 if UTF-8 decoding fails.
 
+### One-line CSV → DataFrame (with `[pandas]` extra)
+
+```python
+import asyncio
+from open_data_mexico import DatosGobMX
+
+async def main():
+    async with DatosGobMX() as client:
+        detail = await client.get_dataset("incidencia_delictiva")
+        df = await client.get_resource_dataframe(detail.resources[0])
+        print(df.shape)
+
+asyncio.run(main())
+```
+
+`get_resource_dataframe()` dispatches on `resource.format`: `csv`/`txt` use `pandas.read_csv` (UTF-8 with latin-1 fallback), `xls`/`xlsx` use `pandas.read_excel`. Pass any keyword arguments through to the underlying reader (`sep="\t"`, `nrows=100`, `sheet_name="Hoja2"`…).
+
+### Download binary resources (XLSX, ZIP, SHP, PDF…)
+
+```python
+data: bytes = await client.get_resource_bytes(resource)
+```
+
+### Stream a large category page-by-page
+
+```python
+async with DatosGobMX() as client:
+    async for ds in client.iter_category_datasets("educacion"):
+        if "primaria" in ds.title.lower():
+            print(ds.slug)
+            break  # stops fetching further pages immediately
+```
+
+### Cache management
+
+```python
+client.invalidate("datasets:seguridad")  # drop one category's listing
+client.clear_cache()                      # drop everything
+```
+
 ### List and look up organizations
 
 ```python
@@ -347,6 +393,40 @@ asyncio.run(main())
 
 ---
 
+## Command-line interface
+
+Installing the package also installs the `open-data-mx` console script:
+
+```bash
+open-data-mx categories                          # list all 28 categories
+open-data-mx category seguridad                  # show one category
+open-data-mx datasets seguridad --limit 5        # first 5 datasets in seguridad
+open-data-mx dataset incidencia_delictiva        # full detail + resources
+open-data-mx organizations                       # 184+ institutions
+open-data-mx organization coneval
+open-data-mx search "rezago social" --limit 3    # full-text search
+open-data-mx search educacion --category educacion --limit 10 --offset 10
+open-data-mx download incidencia_delictiva --output ./data --format csv
+```
+
+Global flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--json` | off | Emit machine-readable JSON instead of human-readable text |
+| `--timeout SEC` | 30 | HTTP timeout |
+| `--delay SEC` | 0 | Polite delay between requests |
+| `--retries N` | 3 | Retry attempts on 5xx/429 |
+| `--concurrency N` | 5 | Max parallel page fetches |
+
+The `--json` flag is handy for piping into `jq`:
+
+```bash
+open-data-mx --json categories | jq '.[] | select(.dataset_count > 200) | .slug'
+```
+
+---
+
 ## Optional: FastAPI REST Server
 
 Install with the `server` extra to expose the library as a local REST API:
@@ -363,6 +443,7 @@ Interactive docs at `http://localhost:8000/docs` (Swagger UI) and `/redoc`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | API info and version |
+| `GET` | `/health` | Liveness probe — `{"status": "ok", "version": "..."}` |
 | `GET` | `/categories` | All 28 categories → `CategoriesResponse` |
 | `GET` | `/categories/{slug}` | Single category → `Category` (404 if not found) |
 | `GET` | `/categories/{slug}/datasets` | All datasets in a category → `DatasetsResponse` |
@@ -370,6 +451,12 @@ Interactive docs at `http://localhost:8000/docs` (Swagger UI) and `/redoc`.
 | `GET` | `/organizations` | All organizations → `OrganizationsResponse` |
 | `GET` | `/organizations/{slug}` | Single organization → `Organization` (404 if not found) |
 | `GET` | `/search?q=...` | Full-text search → `SearchResponse` |
+
+CORS is enabled by default for all origins. Tighten it with the `CORS_ORIGINS` environment variable (comma-separated):
+
+```bash
+CORS_ORIGINS="https://app.example.com,https://staging.example.com" uvicorn server.app:app
+```
 
 **Search query parameters:**
 

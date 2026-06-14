@@ -1,6 +1,10 @@
+"""Optional FastAPI REST server exposing the open-data-mexico client."""
+
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from open_data_mexico import (
     CategoriesResponse,
@@ -11,7 +15,16 @@ from open_data_mexico import (
     Organization,
     OrganizationsResponse,
     SearchResponse,
+    __version__,
 )
+
+
+def _allowed_origins() -> list[str]:
+    """Read the CORS allow-list from ``CORS_ORIGINS`` (comma-separated)."""
+    raw = os.environ.get("CORS_ORIGINS", "*").strip()
+    if raw == "*":
+        return ["*"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 @asynccontextmanager
@@ -39,23 +52,36 @@ def _get_client(request: Request) -> DatosGobMX:
 app = FastAPI(
     title="Open Data Mexico API",
     description="Unofficial REST API for datos.gob.mx",
-    version="0.1.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins(),
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
-@app.get("/")
+
+@app.get("/", tags=["meta"])
 async def root():
-    return {"message": "Open Data Mexico API", "docs": "/docs", "version": "0.1.0"}
+    return {"message": "Open Data Mexico API", "docs": "/docs", "version": __version__}
 
 
-@app.get("/categories", response_model=CategoriesResponse)
+@app.get("/health", tags=["meta"])
+async def health():
+    """Lightweight liveness probe — does not touch the upstream site."""
+    return {"status": "ok", "version": __version__}
+
+
+@app.get("/categories", response_model=CategoriesResponse, tags=["categories"])
 async def list_categories(request: Request):
     categories = await _get_client(request).get_categories()
     return CategoriesResponse(total=len(categories), categories=categories)
 
 
-@app.get("/categories/{slug}", response_model=Category)
+@app.get("/categories/{slug}", response_model=Category, tags=["categories"])
 async def get_category(slug: str, request: Request):
     category = await _get_client(request).get_category(slug)
     if category is None:
@@ -63,7 +89,11 @@ async def get_category(slug: str, request: Request):
     return category
 
 
-@app.get("/categories/{slug}/datasets", response_model=DatasetsResponse)
+@app.get(
+    "/categories/{slug}/datasets",
+    response_model=DatasetsResponse,
+    tags=["categories"],
+)
 async def list_category_datasets(slug: str, request: Request):
     client = _get_client(request)
     category = await client.get_category(slug)
@@ -73,7 +103,7 @@ async def list_category_datasets(slug: str, request: Request):
     return DatasetsResponse(total=len(datasets), category_slug=slug, datasets=datasets)
 
 
-@app.get("/datasets/{slug}", response_model=DatasetDetail)
+@app.get("/datasets/{slug}", response_model=DatasetDetail, tags=["datasets"])
 async def get_dataset(slug: str, request: Request):
     detail = await _get_client(request).get_dataset(slug)
     if detail is None:
@@ -81,14 +111,22 @@ async def get_dataset(slug: str, request: Request):
     return detail
 
 
-@app.get("/organizations", response_model=OrganizationsResponse)
+@app.get(
+    "/organizations",
+    response_model=OrganizationsResponse,
+    tags=["organizations"],
+)
 async def list_organizations(request: Request):
     """List all government organizations that publish datasets."""
     orgs = await _get_client(request).get_organizations()
     return OrganizationsResponse(total=len(orgs), organizations=orgs)
 
 
-@app.get("/organizations/{slug}", response_model=Organization)
+@app.get(
+    "/organizations/{slug}",
+    response_model=Organization,
+    tags=["organizations"],
+)
 async def get_organization(slug: str, request: Request):
     """Fetch a single organization by slug."""
     org = await _get_client(request).get_organization(slug)
@@ -97,7 +135,7 @@ async def get_organization(slug: str, request: Request):
     return org
 
 
-@app.get("/search", response_model=SearchResponse)
+@app.get("/search", response_model=SearchResponse, tags=["search"])
 async def search_datasets(
     request: Request,
     q: str = Query(..., description="Free-text search term, e.g. 'rezago social'"),

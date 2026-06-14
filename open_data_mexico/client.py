@@ -18,12 +18,20 @@ Rate limiting (avoid hammering the site):
         ...
 """
 
+from collections.abc import AsyncIterator
+from contextlib import aclosing
 from time import monotonic
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
-from open_data_mexico._config import CACHE_TTL, HEADERS, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._config import (
+    CACHE_TTL,
+    CONCURRENCY,
+    HEADERS,
+    MAX_RETRIES,
+    REQUEST_DELAY,
+)
 from open_data_mexico._scrapers.categories import fetch_all_categories
 from open_data_mexico.models import (
     Category,
@@ -33,6 +41,9 @@ from open_data_mexico.models import (
     Resource,
     SearchResponse,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class DatosGobMX:
@@ -51,6 +62,8 @@ class DatosGobMX:
             network failures. Defaults to 3.
         cache_ttl: Seconds to keep responses in memory. Set to ``0`` to
             disable caching. Defaults to 300 (5 minutes).
+        concurrency: Max number of pages fetched in parallel during
+            auto-pagination. Defaults to 5.
 
     Example::
 
@@ -71,11 +84,13 @@ class DatosGobMX:
         request_delay: float = REQUEST_DELAY,
         max_retries: int = MAX_RETRIES,
         cache_ttl: float = CACHE_TTL,
+        concurrency: int = CONCURRENCY,
     ) -> None:
         self._timeout = timeout
         self._request_delay = request_delay
         self._max_retries = max_retries
         self._cache_ttl = cache_ttl
+        self._concurrency = concurrency
         self._cache: dict[str, tuple[float, Any]] = {}
         self._client: httpx.AsyncClient | None = None
 
@@ -100,6 +115,29 @@ class DatosGobMX:
         """Store *data* under *key* with the configured TTL."""
         if self._cache_ttl > 0:
             self._cache[key] = (monotonic() + self._cache_ttl, data)
+
+    def clear_cache(self) -> None:
+        """Drop every entry from the in-memory response cache."""
+        self._cache.clear()
+
+    def invalidate(self, key_prefix: str) -> int:
+        """Drop cache entries whose key starts with *key_prefix*.
+
+        Useful for clearing one slice of the cache without wiping the rest::
+
+            client.invalidate("dataset:")            # all dataset details
+            client.invalidate("datasets:seguridad")  # one category listing
+
+        Args:
+            key_prefix: Prefix to match against cache keys.
+
+        Returns:
+            Number of entries removed.
+        """
+        targets = [k for k in self._cache if k.startswith(key_prefix)]
+        for k in targets:
+            del self._cache[k]
+        return len(targets)
 
     async def __aenter__(self) -> "DatosGobMX":
         self._client = httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
@@ -134,6 +172,7 @@ class DatosGobMX:
                 client,
                 request_delay=self._request_delay,
                 max_retries=self._max_retries,
+                concurrency=self._concurrency,
             )
         finally:
             if not self._client:
@@ -199,6 +238,7 @@ class DatosGobMX:
                 category_slug,
                 request_delay=self._request_delay,
                 max_retries=self._max_retries,
+                concurrency=self._concurrency,
             )
         finally:
             if not self._client:
@@ -206,6 +246,44 @@ class DatosGobMX:
 
         self._cache_set(cache_key, result)
         return result
+
+    async def iter_category_datasets(self, category_slug: str) -> AsyncIterator[Dataset]:
+        """Yield datasets in a category page-by-page.
+
+        Streaming variant of :meth:`get_category_datasets`. Page 1 starts
+        yielding immediately; pages are fetched sequentially as the consumer
+        advances. Bypasses the cache — each iteration hits the network.
+
+        Args:
+            category_slug: The URL identifier of the category, e.g. ``"seguridad"``.
+
+        Yields:
+            :class:`~open_data_mexico.models.Dataset` objects in site order.
+
+        Example::
+
+            async with DatosGobMX() as client:
+                async for ds in client.iter_category_datasets("educacion"):
+                    if "primaria" in ds.title.lower():
+                        print(ds.slug, ds.title)
+        """
+        from open_data_mexico._scrapers.datasets import iter_category_datasets
+
+        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        try:
+            async with aclosing(
+                iter_category_datasets(
+                    client,
+                    category_slug,
+                    request_delay=self._request_delay,
+                    max_retries=self._max_retries,
+                )
+            ) as gen:
+                async for ds in gen:
+                    yield ds
+        finally:
+            if not self._client:
+                await client.aclose()
 
     async def get_dataset(self, slug: str) -> DatasetDetail | None:
         """Fetch the full detail page for a dataset.
@@ -277,18 +355,98 @@ class DatosGobMX:
         """
         if not resource.download_url:
             raise ValueError(f"Resource '{resource.name}' has no download_url.")
+        raw = await self.get_resource_bytes(resource)
+        # Many Mexican gov CSV files use latin-1 encoding
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return raw.decode("latin-1")
+
+    async def get_resource_bytes(self, resource: Resource) -> bytes:
+        """Download a resource's raw bytes — works for any file format.
+
+        Use this for binary formats (XLSX, ZIP, SHP, PDF, …) where text
+        decoding would corrupt the payload. For CSVs you can either use
+        this and decode yourself, or use :meth:`get_resource_data` which
+        does the UTF-8 / latin-1 fallback for you.
+
+        Args:
+            resource: A :class:`Resource` with a non-None ``download_url``.
+
+        Returns:
+            The raw file content as ``bytes``.
+
+        Raises:
+            ValueError: If ``resource.download_url`` is None.
+            httpx.HTTPStatusError: On non-2xx HTTP responses.
+            httpx.RequestError: On network failures.
+        """
+        if not resource.download_url:
+            raise ValueError(f"Resource '{resource.name}' has no download_url.")
         client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
         try:
             resp = await client.get(resource.download_url)
             resp.raise_for_status()
-            # Many Mexican gov CSV files use latin-1 encoding
-            try:
-                return resp.content.decode("utf-8")
-            except UnicodeDecodeError:
-                return resp.content.decode("latin-1")
+            return resp.content
         finally:
             if not self._client:
                 await client.aclose()
+
+    async def get_resource_dataframe(
+        self, resource: Resource, **read_kwargs: Any
+    ) -> "pd.DataFrame":
+        """Download a resource and return it as a pandas DataFrame.
+
+        Requires the ``pandas`` optional extra (``pip install open-data-mexico[pandas]``).
+        The reader is picked from ``resource.format``:
+
+        - ``csv`` → :func:`pandas.read_csv` (UTF-8 with latin-1 fallback).
+        - ``xls`` / ``xlsx`` → :func:`pandas.read_excel`.
+
+        Any keyword arguments are forwarded to the underlying reader, so you
+        can pass ``sep="\\t"``, ``sheet_name=...``, ``nrows=100`` etc.
+
+        Args:
+            resource: A :class:`Resource` with a non-None ``download_url``
+                and a supported ``format``.
+            **read_kwargs: Passed straight to ``pandas.read_csv`` / ``read_excel``.
+
+        Returns:
+            The parsed :class:`pandas.DataFrame`.
+
+        Raises:
+            ImportError: If pandas is not installed.
+            ValueError: If ``download_url`` is missing or the format is unsupported.
+            httpx.HTTPStatusError / httpx.RequestError: As for :meth:`get_resource_bytes`.
+        """
+        try:
+            import pandas as pd
+        except ImportError as exc:  # pragma: no cover - hard to fake in tests
+            raise ImportError(
+                "pandas is required for get_resource_dataframe(). "
+                "Install it with: pip install 'open-data-mexico[pandas]'"
+            ) from exc
+
+        import io
+
+        fmt = (resource.format or "").lower()
+        raw = await self.get_resource_bytes(resource)
+
+        if fmt in ("csv", "txt", ""):
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                text = raw.decode("latin-1")
+            return pd.read_csv(io.StringIO(text), **read_kwargs)
+
+        if fmt in ("xls", "xlsx"):
+            return pd.read_excel(io.BytesIO(raw), **read_kwargs)
+
+        raise ValueError(
+            f"Unsupported resource format for get_resource_dataframe: {resource.format!r}. "
+            "Supported formats: csv, txt, xls, xlsx. "
+            "Use get_resource_bytes() for other formats."
+        )
 
     async def search(
         self,

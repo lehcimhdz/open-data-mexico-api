@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "open-data-mexico"
-version = "1.1.0"
+version = "1.2.0"
 description = "Unofficial Python client for the Mexican government open data platform (datos.gob.mx)"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -54,6 +54,9 @@ dev = [
 Homepage = "https://github.com/lehcimhdz/open-data-mexico-api"
 Repository = "https://github.com/lehcimhdz/open-data-mexico-api"
 "Bug Tracker" = "https://github.com/lehcimhdz/open-data-mexico-api/issues"
+
+[project.scripts]
+open-data-mx = "open_data_mexico.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["open_data_mexico"]

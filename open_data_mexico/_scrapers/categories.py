@@ -18,8 +18,8 @@ import re
 import httpx
 from bs4 import BeautifulSoup
 
-from open_data_mexico._config import BASE_URL, MAX_RETRIES, REQUEST_DELAY
-from open_data_mexico._http import robust_get
+from open_data_mexico._config import BASE_URL, CONCURRENCY, MAX_RETRIES, REQUEST_DELAY
+from open_data_mexico._http import gather_pages, robust_get
 from open_data_mexico.models import Category
 
 
@@ -125,16 +125,19 @@ async def fetch_all_categories(
     *,
     request_delay: float = REQUEST_DELAY,
     max_retries: int = MAX_RETRIES,
+    concurrency: int = CONCURRENCY,
 ) -> list[Category]:
     """Fetch all categories across all pages.
 
-    Fetches page 1 first to detect the total page count, then fetches
-    remaining pages sequentially with retry/backoff on transient failures.
+    Fetches page 1 first to detect the total page count, then fetches the
+    remaining pages in parallel (capped at ``concurrency``) with retry/backoff
+    on transient failures.
 
     Args:
         client: An active ``httpx.AsyncClient`` with appropriate headers.
         request_delay: Seconds to sleep after each successful request (rate limiting).
         max_retries: Retry attempts on transient failures.
+        concurrency: Max number of pages fetched in parallel. Default 5.
 
     Returns:
         Combined list of all Category objects from every page, in site order.
@@ -155,15 +158,17 @@ async def fetch_all_categories(
     total_pages = await _get_total_pages(first_page_html)
     all_categories = await _parse_categories_page(first_page_html)
 
-    for page in range(2, total_pages + 1):
-        resp = await robust_get(
+    if total_pages > 1:
+        remaining = [(f"{BASE_URL}/group/", {"page": page}) for page in range(2, total_pages + 1)]
+        responses = await gather_pages(
             client,
-            f"{BASE_URL}/group/",
-            params={"page": page},
-            request_delay=request_delay,
+            remaining,
+            concurrency=concurrency,
             max_retries=max_retries,
+            request_delay=request_delay,
         )
-        resp.raise_for_status()
-        all_categories.extend(await _parse_categories_page(resp.text))
+        for r in responses:
+            r.raise_for_status()
+            all_categories.extend(await _parse_categories_page(r.text))
 
     return all_categories
