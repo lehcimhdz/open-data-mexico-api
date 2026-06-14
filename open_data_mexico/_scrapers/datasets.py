@@ -134,7 +134,32 @@ def _get_total_pages(html: str) -> int:
         text = li.get_text(strip=True)
         if text.isdigit():
             pages.add(int(text))
+    # The site only renders a 1-2-3-…-N-1 N window; if a "next" link is still
+    # present we don't actually know how many pages there are. Callers can use
+    # :func:`_has_next_page` to drive an unbounded loop when needed.
     return max(pages) if pages else 1
+
+
+def _has_next_page(html: str) -> bool:
+    """Return True when the pagination widget still exposes a "next" link.
+
+    datos.gob.mx renders a `<li class="next"><a ...>»</a></li>` element while
+    there is a following page; it disappears (or gains ``.disabled``) on the
+    last page. This lets us paginate past the visible numeric window for big
+    categories like ``educacion`` (1430 datasets, but only the first 9 numeric
+    pages are ever rendered).
+    """
+    soup = BeautifulSoup(html, "lxml")
+    next_li = soup.select_one(
+        "ul.pagination li.next, ul.pagination li.pagination-next"
+    )
+    if next_li is not None:
+        classes = " ".join(next_li.get("class", []))
+        if "disabled" in classes:
+            return False
+        return next_li.find("a") is not None
+    # Some templates use rel="next" on the <a> directly without the wrapping li
+    return soup.select_one('ul.pagination a[rel="next"]') is not None
 
 
 async def fetch_category_datasets(
@@ -174,6 +199,7 @@ async def fetch_category_datasets(
     resp.raise_for_status()
     total_pages = _get_total_pages(resp.text)
     datasets = _parse_datasets_page(resp.text)
+    last_html = resp.text
 
     if total_pages > 1:
         remaining = [
@@ -190,6 +216,29 @@ async def fetch_category_datasets(
         for r in responses:
             r.raise_for_status()
             datasets.extend(_parse_datasets_page(r.text))
+            last_html = r.text
+
+    # The pagination widget on datos.gob.mx only renders a narrow numeric
+    # window (typically 1..9 even when 70+ pages exist), so we keep going past
+    # the last visible page as long as the "next" link is still present.
+    page = total_pages
+    while _has_next_page(last_html):
+        page += 1
+        if page > 10_000:  # safety net — categories never get that big
+            break
+        resp = await robust_get(
+            client,
+            f"{BASE_URL}/group/{category_slug}",
+            params={"page": page},
+            request_delay=request_delay,
+            max_retries=max_retries,
+        )
+        resp.raise_for_status()
+        page_items = _parse_datasets_page(resp.text)
+        if not page_items:
+            break
+        datasets.extend(page_items)
+        last_html = resp.text
 
     return datasets
 
@@ -227,7 +276,10 @@ async def iter_category_datasets(
     total_pages = _get_total_pages(resp.text)
     for ds in _parse_datasets_page(resp.text):
         yield ds
+    last_html = resp.text
 
+    # First exhaust the numerically labelled pages (matches the original
+    # behaviour and keeps the existing tests honest)…
     for page in range(2, total_pages + 1):
         resp = await robust_get(
             client,
@@ -239,3 +291,27 @@ async def iter_category_datasets(
         resp.raise_for_status()
         for ds in _parse_datasets_page(resp.text):
             yield ds
+        last_html = resp.text
+
+    # …then keep going as long as datos.gob.mx still advertises a "next"
+    # link. The site truncates the numeric window to ~9 even when there are
+    # 70+ pages, so for big categories this is the only way to reach the rest.
+    page = total_pages
+    while _has_next_page(last_html):
+        page += 1
+        if page > 10_000:  # safety net
+            break
+        resp = await robust_get(
+            client,
+            f"{BASE_URL}/group/{category_slug}",
+            params={"page": page},
+            request_delay=request_delay,
+            max_retries=max_retries,
+        )
+        resp.raise_for_status()
+        page_items = _parse_datasets_page(resp.text)
+        if not page_items:
+            break
+        for ds in page_items:
+            yield ds
+        last_html = resp.text

@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] — 2026-06-14
+
+### Fixed
+- `fetch_category_datasets()` and `iter_category_datasets()` were stopping at
+  the last numerically labelled page (typically 9) because the pagination
+  widget on `datos.gob.mx/group/{slug}` only renders a 1-2-3-…-N-1 N window
+  even when 70+ pages exist. Categories like `educacion` (1 430 datasets) were
+  returning only ~173. Now we follow the `<li class="next">` link past the
+  visible window via a new `_has_next_page()` helper, so big categories are
+  fully indexed. Verified end-to-end on the lenovo pipeline run.
+
+---
+
 ## [1.2.0] — 2026-06-13
 
 ### Added
@@ -83,7 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 44 tests with mock HTML fixtures (pytest-asyncio + pytest-httpx).
 - Documentation for all 28 available categories.
 
-[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/compare/v0.1.0...v1.1.0
 [0.1.0]: https://github.com/lehcimhdz/open-data-mexico-api/releases/tag/v0.1.0
