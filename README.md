@@ -520,19 +520,28 @@ use the same retry and delay settings as metadata requests. `max_retries` is the
 **total number of attempts**, must be at least 1, and only applies to transient
 network errors and HTTP 429/5xx responses.
 
-If requests fail with **HTTP 403 / Access Denied**, check the upstream directly:
+The client identifies itself with `User-Agent: open-data-mexico`. The previous
+Chrome browser User-Agent caused reproducible **HTTP 403 / Access Denied** responses
+for CSV downloads from `repodatos.atdt.gob.mx`. On October 12, 2026, three CSVs
+returned 403 with that browser header and 200 with the library identifier; changing
+only `Accept` did not fix them. With the corrected header, all 41 sampled resources
+(including the 35 previously blocked CSVs) returned 200. The original
+`cij_red_atencion_01.csv` was also downloaded completely (27,870 bytes, 121 lines).
+The exact server-side rule remains unknown; this verification covers the sample
+and environment tested, not every resource on the portal.
+
+To check a resource independently, identify the client explicitly:
 
 ```bash
-curl -i 'https://www.datos.gob.mx/api/3/action/package_search?q=salud&rows=1'
+curl --fail --location --user-agent open-data-mexico \
+  'https://repodatos.atdt.gob.mx/api_update/cij/red_atencion/cij_red_atencion_01.csv' \
+  --output cij_red_atencion_01.csv
 ```
 
-During verification on October 12, 2026, both the public HTML pages and CKAN API
-returned an Akamai access denial from this environment. The client cannot resolve
-an upstream access restriction by retrying. Check access from the machine/network
-where you run the application and contact the provider if the restriction persists.
-A later check on the same date succeeded with the default client: the search
-returned 225 matches for `salud` and category listing returned 28 categories.
-The earlier denial was therefore intermittent; the exact upstream rule is unknown.
+If a 403 persists with this header, compare access from the machine/network where
+you run the application and contact the provider with the URL, timestamp, public
+outbound IP, and access-denial reference. Repeated retries do not resolve an access
+restriction.
 
 The REST server reports upstream HTTP failures as **502** with `upstream_status`
 (including a specific explanation for 403), network failures as **502**, and

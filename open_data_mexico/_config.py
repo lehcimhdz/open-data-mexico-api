@@ -1,10 +1,8 @@
 BASE_URL = "https://www.datos.gob.mx"
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
+    # Identify the library honestly. The previous Chrome impersonation caused
+    # reproducible 403 responses on repodatos.atdt.gob.mx CSV downloads.
+    "User-Agent": "open-data-mexico",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
 }

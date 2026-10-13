@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Replace the Chrome browser User-Agent with the honest `open-data-mexico`
+  identifier. All 35 previously blocked CSVs returned HTTP 200 in a live recheck;
+  all 41 sampled resources succeeded, and the original CIJ CSV downloaded fully.
 - Follow HTTP redirects for metadata requests and resource downloads.
 - Apply configured retries and request delays to resource downloads.
 - Resolve relative resource download URLs against the dataset page.

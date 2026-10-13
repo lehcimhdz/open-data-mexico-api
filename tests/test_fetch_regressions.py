@@ -84,3 +84,25 @@ async def test_server_reports_upstream_failure(failure, expected):
     if failure == "403":
         assert response.json()["upstream_status"] == 403
         assert "denied access" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("use_context", [True, False])
+async def test_download_identifies_library_to_upstream(httpx_mock, use_context):
+    """The old Chrome User-Agent reproduces the upstream CSV access denial."""
+    url = "https://repodatos.atdt.gob.mx/api_update/cij/red_atencion/test.csv"
+
+    def serve_csv(request):
+        agent = request.headers.get("User-Agent", "")
+        if agent != "open-data-mexico":
+            return httpx.Response(403, text="Access Denied")
+        return httpx.Response(200, content=b"id,name\n1,Centro\n")
+
+    httpx_mock.add_callback(serve_csv, url=url)
+    resource = Resource(resource_id="test", name="CSV", format="csv", download_url=url)
+    client = DatosGobMX(max_retries=1)
+    if use_context:
+        async with client:
+            result = await client.get_resource_data(resource)
+    else:
+        result = await client.get_resource_data(resource)
+    assert result == "id,name\n1,Centro\n"
