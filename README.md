@@ -530,7 +530,9 @@ During verification on October 12, 2026, both the public HTML pages and CKAN API
 returned an Akamai access denial from this environment. The client cannot resolve
 an upstream access restriction by retrying. Check access from the machine/network
 where you run the application and contact the provider if the restriction persists.
-No successful live data download could be verified under that restriction.
+A later check on the same date succeeded with the default client: the search
+returned 225 matches for `salud` and category listing returned 28 categories.
+The earlier denial was therefore intermittent; the exact upstream rule is unknown.
 
 The REST server reports upstream HTTP failures as **502** with `upstream_status`
 (including a specific explanation for 403), network failures as **502**, and
