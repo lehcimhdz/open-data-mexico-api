@@ -58,6 +58,8 @@ async def robust_get(
         httpx.ConnectError / httpx.TimeoutException: If all retries fail on
             a network error.
     """
+    if max_retries < 1:
+        raise ValueError("max_retries must be at least 1 (total request attempts).")
     last_exc: Exception | None = None
 
     for attempt in range(max_retries):

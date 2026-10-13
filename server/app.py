@@ -3,8 +3,10 @@
 import os
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from open_data_mexico import (
     CategoriesResponse,
@@ -62,6 +64,25 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(httpx.HTTPStatusError)
+async def upstream_status_error(request: Request, exc: httpx.HTTPStatusError):
+    status = exc.response.status_code
+    detail = (
+        "datos.gob.mx denied access (HTTP 403). The upstream may restrict this network."
+        if status == 403
+        else f"Upstream data provider returned HTTP {status}."
+    )
+    return JSONResponse(status_code=502, content={"detail": detail, "upstream_status": status})
+
+
+@app.exception_handler(httpx.RequestError)
+async def upstream_request_error(request: Request, exc: httpx.RequestError):
+    status = 504 if isinstance(exc, httpx.TimeoutException) else 502
+    return JSONResponse(
+        status_code=status, content={"detail": "Unable to reach the upstream data provider."}
+    )
 
 
 @app.get("/", tags=["meta"])

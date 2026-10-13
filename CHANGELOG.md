@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Follow HTTP redirects for metadata requests and resource downloads.
+- Apply configured retries and request delays to resource downloads.
+- Resolve relative resource download URLs against the dataset page.
+- Reject zero or negative request attempt counts with a clear `ValueError`.
+- Return structured 502/504 errors from the REST server when the upstream
+  blocks requests, returns HTTP errors, or cannot be reached.
+
+### Added
+- Regression tests for redirected downloads, transient failures, relative URLs,
+  invalid attempt counts, and upstream error reporting.
+- Troubleshooting notes documenting the observed upstream HTTP 403 restriction.
+
 ---
 
 ## [1.2.2] — 2026-06-14

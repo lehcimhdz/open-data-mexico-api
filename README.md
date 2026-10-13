@@ -513,6 +513,32 @@ curl http://localhost:8000/organizations/coneval
 
 ---
 
+## Troubleshooting data fetching
+
+The client follows HTTP redirects for portal requests and file downloads. Downloads
+use the same retry and delay settings as metadata requests. `max_retries` is the
+**total number of attempts**, must be at least 1, and only applies to transient
+network errors and HTTP 429/5xx responses.
+
+If requests fail with **HTTP 403 / Access Denied**, check the upstream directly:
+
+```bash
+curl -i 'https://www.datos.gob.mx/api/3/action/package_search?q=salud&rows=1'
+```
+
+During verification on October 12, 2026, both the public HTML pages and CKAN API
+returned an Akamai access denial from this environment. The client cannot resolve
+an upstream access restriction by retrying. Check access from the machine/network
+where you run the application and contact the provider if the restriction persists.
+No successful live data download could be verified under that restriction.
+
+The REST server reports upstream HTTP failures as **502** with `upstream_status`
+(including a specific explanation for 403), network failures as **502**, and
+timeouts as **504**. `/health` checks only the local server; it does not prove that
+datos.gob.mx is reachable.
+
+---
+
 ## Development
 
 ```bash

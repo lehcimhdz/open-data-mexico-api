@@ -154,8 +154,8 @@ def _has_next_page(html: str) -> bool:
         "ul.pagination li.next, ul.pagination li.pagination-next"
     )
     if next_li is not None:
-        classes = " ".join(next_li.get("class", []))
-        if "disabled" in classes:
+        classes = next_li.get("class")
+        if classes and "disabled" in classes:
             return False
         return next_li.find("a") is not None
     # Some templates use rel="next" on the <a> directly without the wrapping li

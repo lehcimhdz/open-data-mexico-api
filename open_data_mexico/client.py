@@ -32,6 +32,7 @@ from open_data_mexico._config import (
     MAX_RETRIES,
     REQUEST_DELAY,
 )
+from open_data_mexico._http import robust_get
 from open_data_mexico._scrapers.categories import fetch_all_categories
 from open_data_mexico.models import (
     Category,
@@ -86,6 +87,8 @@ class DatosGobMX:
         cache_ttl: float = CACHE_TTL,
         concurrency: int = CONCURRENCY,
     ) -> None:
+        if max_retries < 1:
+            raise ValueError("max_retries must be at least 1 (total request attempts).")
         self._timeout = timeout
         self._request_delay = request_delay
         self._max_retries = max_retries
@@ -140,7 +143,9 @@ class DatosGobMX:
         return len(targets)
 
     async def __aenter__(self) -> "DatosGobMX":
-        self._client = httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        self._client = httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         return self
 
     async def __aexit__(self, *args) -> None:
@@ -166,7 +171,9 @@ class DatosGobMX:
         if cached is not None:
             return cast(list[Category], cached)
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             result = await fetch_all_categories(
                 client,
@@ -231,7 +238,9 @@ class DatosGobMX:
         if cached is not None:
             return cast(list[Dataset], cached)
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             result = await fetch_category_datasets(
                 client,
@@ -269,7 +278,9 @@ class DatosGobMX:
         """
         from open_data_mexico._scrapers.datasets import iter_category_datasets
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             async with aclosing(
                 iter_category_datasets(
@@ -306,7 +317,9 @@ class DatosGobMX:
         if cached is not None:
             return cast(DatasetDetail, cached)
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             result = await fetch_dataset_detail(
                 client,
@@ -383,9 +396,16 @@ class DatosGobMX:
         """
         if not resource.download_url:
             raise ValueError(f"Resource '{resource.name}' has no download_url.")
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
-            resp = await client.get(resource.download_url)
+            resp = await robust_get(
+                client,
+                resource.download_url,
+                request_delay=self._request_delay,
+                max_retries=self._max_retries,
+            )
             resp.raise_for_status()
             return resp.content
         finally:
@@ -499,7 +519,9 @@ class DatosGobMX:
         """
         from open_data_mexico._scrapers.search import search_datasets
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             total, datasets = await search_datasets(
                 client,
@@ -542,7 +564,9 @@ class DatosGobMX:
         if cached is not None:
             return cast(list[Organization], cached)
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             result = await fetch_all_organizations(
                 client,
@@ -572,7 +596,9 @@ class DatosGobMX:
         """
         from open_data_mexico._scrapers.organizations import fetch_organization
 
-        client = self._client or httpx.AsyncClient(headers=HEADERS, timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(
+            headers=HEADERS, timeout=self._timeout, follow_redirects=True
+        )
         try:
             return await fetch_organization(
                 client,

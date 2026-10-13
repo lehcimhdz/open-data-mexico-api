@@ -21,6 +21,8 @@ Per-resource (ul.resource-list li.resource-item):
   a.btn-primary[href]                   — detail page href (Consultar button)
 """
 
+from urllib.parse import urljoin
+
 import httpx
 from bs4 import BeautifulSoup
 
@@ -165,7 +167,7 @@ def _parse_dataset_detail(html: str, slug: str) -> DatasetDetail:
         # download URL (Descargar button)
         dl_a = li.select_one("a.btn-outline-primary")
         dl_href = dl_a.get("href") if dl_a else None
-        download_url = str(dl_href) if dl_href is not None else None
+        download_url = urljoin(f"{BASE_URL}/dataset/{slug}", str(dl_href)) if dl_href else None
 
         resources.append(
             Resource(
